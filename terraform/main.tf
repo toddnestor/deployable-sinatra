@@ -45,5 +45,5 @@ module "build" {
   # https://www.terraform.io/docs/providers/aws/r/codebuild_project.html
   privileged_mode     = "true"
   image_repo_name     = "${module.ecr.repository_name}"
-  image_tag           = "latest"
+  image_tag           = "${var.environment}"
 }
