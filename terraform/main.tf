@@ -44,6 +44,6 @@ module "build" {
   # http://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker.html
   # https://www.terraform.io/docs/providers/aws/r/codebuild_project.html
   privileged_mode     = "true"
-  image_repo_name     = "${var.registry_name}"
+  image_repo_name     = "${module.ecr.repository_name}"
   image_tag           = "latest"
 }
