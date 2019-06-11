@@ -9,3 +9,8 @@ variable "github_token" {}
 variable "registry_name" {}
 variable "namespace" {}
 variable "environment" {}
+variable "vpc_id" {}
+variable "public_subnet_ids" {
+  type = "list"
+}
+variable "container_version" {}
