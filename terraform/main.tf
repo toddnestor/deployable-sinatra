@@ -138,19 +138,14 @@ module "ecs-fargate" {
 
   task_container_image = "${module.ecr.registry_url}:${var.container_version}"
   task_container_port  = "4000"
+  task_container_assign_public_ip = true
 
   task_container_environment_count = 10
   task_container_environment       = {
-    ROR_PORT = "4000"
-    AWS_ACCESS_KEY_ID = "${var.aws_access_key}"
-    AWS_SECRET_ACCESS_KEY = "${var.aws_secret_key}"
     RACK_ENV = "${var.environment}"
-    RAILS_ENV = "${var.environment}"
-    RAILS_SKIP_ASSET_COMPILATION = "true"
-    RAILS_SKIP_MIGRATIONS = "true"
   }
 
-  deployment_controller_type = "CODE_DEPLOY"
+//  deployment_controller_type = "CODE_DEPLOY"
 
   desired_count        = "2"
   health_check         = {
@@ -197,7 +192,7 @@ resource "aws_security_group_rule" "lb_to_containers" {
   security_group_id        = "${module.ecs-fargate.service_sg_id}"
   type                     = "ingress"
   protocol                 = "tcp"
-  from_port                = "4000"
+  from_port                = "80"
   to_port                  = "4000"
   source_security_group_id = "${module.raise_ror_frontend_sg.this_security_group_id}"
 }
