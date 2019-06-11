@@ -32,7 +32,7 @@ module "build" {
   github_oauth_token  = "${var.github_token}"
   repo_owner          = "toddnestor"
   repo_name           = "deployable-sinatra"
-  branch              = "development"
+  branch              = "develop"
 
   # http://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref.html
   # http://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
