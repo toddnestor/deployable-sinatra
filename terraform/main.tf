@@ -682,7 +682,7 @@ resource "aws_codepipeline" "codepipeline" {
 
       configuration {
         ApplicationName = "${module.codedeploy-for-ecs.codedeploy_app_name}"
-        DeploymentGroupName = "${module.codedeploy-for-ecs.codedeploy_deployment_group_id}"
+        DeploymentGroupName = "${var.environment}-sinatra"
       }
     }
   }
