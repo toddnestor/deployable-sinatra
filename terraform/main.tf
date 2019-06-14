@@ -660,6 +660,7 @@ resource "aws_codepipeline" "codepipeline" {
       owner           = "AWS"
       provider        = "CodeBuild"
       input_artifacts = ["code"]
+      output_artifacts = ["task"]
       version         = "1"
       configuration {
         ProjectName = "${aws_codebuild_project.codebuild_docker_image.name}"
@@ -667,19 +668,21 @@ resource "aws_codepipeline" "codepipeline" {
     }
   }
 
-  # We use CodeBuild to deploy application.
+  # We use CodeDeploy to deploy application.
   stage {
     name = "Deploy"
 
     action {
       name            = "Deploy"
-      category        = "Build"
+      category        = "Deploy"
       owner           = "AWS"
-      provider        = "CodeBuild"
+      provider        = "CodeDeploy"
       input_artifacts = ["code"]
       version         = "1"
+
       configuration {
-        ProjectName = "${module.codedeploy-for-ecs.codedeploy_app_name}"
+        ApplicationName = "${module.codedeploy-for-ecs.codedeploy_app_name}"
+        DeploymentGroupName = "${module.codedeploy-for-ecs.codedeploy_deployment_group_id}"
       }
     }
   }
