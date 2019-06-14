@@ -14,3 +14,6 @@ variable "public_subnet_ids" {
   type = "list"
 }
 variable "container_version" {}
+variable "repo_owner" {}
+variable "repo_name" {}
+variable "branch" {}
