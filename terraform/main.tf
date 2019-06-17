@@ -286,7 +286,7 @@ module "codedeploy-for-ecs" {
   ecs_service_name           = "${var.environment}-sinatra"
   lb_listener_arns           = ["${module.alb.load_balancer_id}"]
   blue_lb_target_group_name  = "${aws_lb_target_group.green.name}"
-  green_lb_target_group_name = "${module.ecs-fargate.target_group_arn}"
+  green_lb_target_group_name = "${module.ecs-fargate.target_group_name}"
 
   auto_rollback_enabled            = true
   auto_rollback_events             = ["DEPLOYMENT_FAILURE"]
