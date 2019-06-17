@@ -341,12 +341,48 @@ resource "aws_iam_role" "iam_codepipeline_role" {
       },
       "Effect": "Allow",
       "Sid": ""
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "codedeploy.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
     }
   ]
 }
 EOF
 
 }
+resource "aws_iam_role_policy" "codedeploypolicy" {
+  name = "iam_codepipeline_policy"
+  role = "${module.codedeploy-for-ecs.iam_role_name}"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "s3:*",
+                "codedeploy:*"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
+            "Action": [
+                "codebuild:StartBuild",
+                "codebuild:BatchGetBuilds"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        }
+    ]
+}
+EOF
+}
+
 resource "aws_iam_role_policy" "iam_codepipeline_policy" {
   name = "iam_codepipeline_policy"
   role = "${aws_iam_role.iam_codepipeline_role.id}"
@@ -357,7 +393,8 @@ resource "aws_iam_role_policy" "iam_codepipeline_policy" {
     "Statement": [
         {
             "Action": [
-                "s3:*"
+                "s3:*",
+                "codedeploy:*"
             ],
             "Resource": "*",
             "Effect": "Allow"
@@ -510,6 +547,7 @@ resource "aws_iam_role_policy" "iam_code_build_policy" {
     {
       "Action": [
           "s3:PutObject",
+          "codedeploy:*",
           "s3:GetObject",
           "s3:GetObjectVersion",
           "s3:GetBucketVersioning"
@@ -623,7 +661,6 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
     type            = "CODEPIPELINE"
     buildspec       = "app/buildspec.yml"
   }
-
 }
 
 
@@ -684,7 +721,7 @@ resource "aws_codepipeline" "codepipeline" {
       category        = "Deploy"
       owner           = "AWS"
       provider        = "CodeDeploy"
-      input_artifacts = ["code"]
+      input_artifacts = ["task"]
       version         = "1"
 
       configuration {
