@@ -16,7 +16,7 @@ phases:
       - echo Build completed on `date`
       - echo Pushing the Docker image to ECR...
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION
-      - printf 'version: %s\nResources:\n\t-TargetService:\n\t\tType: AWS::ECS::Service\n\t\tProperties:\n\t\tTaskDefinition: arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:22\n' $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION > AppSpec.yml
+#      - printf 'version: %s\nResources:\n\t-TargetService:\n\t\tType: AWS::ECS::Service\n\t\tProperties:\n\t\tTaskDefinition: arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:22\n' $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION > AppSpec.yml
 artifacts:
   files:
     - AppSpec.yml
