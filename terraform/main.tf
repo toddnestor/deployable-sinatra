@@ -632,6 +632,7 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
 
   artifacts {
     type = "CODEPIPELINE"
+    encryption_disabled = "true"
   }
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
