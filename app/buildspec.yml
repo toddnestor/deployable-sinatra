@@ -22,4 +22,4 @@ phases:
       - ./generate_app_spec.sh
 artifacts:
   files:
-    - AppSpec.yml
+    - appspec.yml
