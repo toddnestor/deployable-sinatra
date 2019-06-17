@@ -205,31 +205,6 @@ resource "aws_lb_target_group" "green" {
   }
 }
 
-resource "aws_lb_target_group" "blue" {
-  vpc_id       = "${var.vpc_id}"
-  port         = "4001"
-  protocol     = "HTTP"
-  target_type  = "ip"
-  health_check = {
-    port = "4000"
-    path = "/"
-    interval = 60
-  }
-
-  # NOTE: TF is unable to destroy a target group while a listener is attached,
-  # therefor we have to create a new one before destroying the old. This also means
-  # we have to let it have a random name, and then tag it with the desired name.
-  lifecycle {
-    create_before_destroy = true
-  }
-  tags = {
-    User        = "Terraform"
-    Name        = "${var.environment}-ror-target-4000-green"
-    "User:Service" = "MainRorApp"
-    Environment = "${var.environment}"
-  }
-}
-
 resource "aws_security_group_rule" "lb_to_containers" {
   security_group_id        = "${module.ecs-fargate.service_sg_id}"
   type                     = "ingress"
@@ -311,7 +286,7 @@ module "codedeploy-for-ecs" {
   ecs_service_name           = "${var.environment}-sinatra"
   lb_listener_arns           = ["${module.alb.load_balancer_id}"]
   blue_lb_target_group_name  = "${aws_lb_target_group.green.name}"
-  green_lb_target_group_name = "${aws_lb_target_group.blue.name}"
+  green_lb_target_group_name = "${module.ecs-fargate.target_group_arn}"
 
   auto_rollback_enabled            = true
   auto_rollback_events             = ["DEPLOYMENT_FAILURE"]
