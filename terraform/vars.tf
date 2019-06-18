@@ -17,3 +17,4 @@ variable "container_version" {}
 variable "repo_owner" {}
 variable "repo_name" {}
 variable "branch" {}
+variable "dns_zone_name" {}

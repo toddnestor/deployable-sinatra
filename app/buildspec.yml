@@ -18,8 +18,9 @@ phases:
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION
       - echo Make generate_app_spec.sh executable
       - chmod +x ./generate_app_spec.sh
-      - echo Generate AppSpec.yml
+      - echo Generate appspec.yml
       - ./generate_app_spec.sh
 artifacts:
   files:
     - appspec.yml
+  discard-paths: yes

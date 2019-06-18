@@ -8,6 +8,9 @@ provider "aws" {
   region     = "us-east-2"
 }
 
+provider "godaddy" {
+}
+
 ##################################################################################
 # RESOURCES
 ##################################################################################
@@ -253,16 +256,17 @@ module "codedeploy-for-ecs" {
   name                       = "${var.environment}-sinatra"
   ecs_cluster_name           = "${aws_ecs_cluster.sinatra.name}"
   ecs_service_name           = "${var.environment}-sinatra"
-  lb_listener_arns           = ["${aws_alb_listener.front_end_8443.arn}"]
+  lb_listener_arns           = ["${aws_alb_listener.front_end_80.arn}"]
   blue_lb_target_group_name  = "${module.ecs-fargate.target_group_name}"
   green_lb_target_group_name = "${aws_lb_target_group.green.name}"
 
   auto_rollback_enabled            = true
   auto_rollback_events             = ["DEPLOYMENT_FAILURE"]
-  action_on_timeout                = "STOP_DEPLOYMENT"
-  wait_time_in_minutes             = 5
+  wait_time_in_minutes             = 0
   termination_wait_time_in_minutes = 0
   iam_path                         = "/service-role/"
+
+  test_traffic_route_listener_arns = ["${aws_alb_listener.front_end_8443.arn}"]
 }
 
 data "aws_region" "current" {}
@@ -296,13 +300,25 @@ EOF
 
 }
 resource "aws_iam_role_policy" "codedeploypolicy" {
-  name = "iam_codepipeline_policy"
+  name = "codedeploypolicy"
   role = "${module.codedeploy-for-ecs.iam_role_name}"
 
   policy = <<EOF
 {
     "Version": "2012-10-17",
     "Statement": [
+        {
+          "Action": [
+              "s3:PutObject",
+              "codedeploy:*",
+              "s3:GetObject",
+              "s3:GetObjectVersion",
+              "s3:GetBucketVersioning"
+          ],
+          "Resource": "*",
+          "Effect": "Allow",
+          "Sid": "AccessCodePipelineArtifacts"
+        },
         {
             "Action": [
                 "s3:*",
@@ -606,7 +622,7 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
 }
 
 resource "aws_codepipeline" "codepipeline" {
-  name     = "demo"
+  name     = "deployable-sinatra"
   role_arn = "${aws_iam_role.iam_codepipeline_role.arn}"
 
   artifact_store {
@@ -670,5 +686,18 @@ resource "aws_codepipeline" "codepipeline" {
         DeploymentGroupName = "${var.environment}-sinatra"
       }
     }
+  }
+}
+
+# GODADDY DNS #
+
+resource "godaddy_domain_record" "sinatra" {
+  domain   = "${var.dns_zone_name}"
+
+  record {
+    name = "deployable-sinatra"
+    type = "CNAME"
+    data = "${module.alb.dns_name}"
+    ttl = 600
   }
 }

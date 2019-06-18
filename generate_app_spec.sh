@@ -6,7 +6,7 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: "arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:26"
+        TaskDefinition: "arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:32"
         LoadBalancerInfo:
           ContainerName: "%s"
           ContainerPort: "4000"
