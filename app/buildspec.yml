@@ -22,5 +22,5 @@ phases:
       - ./generate_app_spec.sh
 artifacts:
   files:
-    - appspec.yml
+    - appspec.yaml
   discard-paths: yes
