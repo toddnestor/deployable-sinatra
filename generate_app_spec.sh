@@ -10,7 +10,7 @@ Resources:
       Properties:
         TaskDefinition: "arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:34"
         LoadBalancerInfo:
-          ContainerName: "%s"
+          ContainerName: "development-sinatra"
           ContainerPort: "4000"
         PlatformVersion: "LATEST"
 TEST
