@@ -247,46 +247,15 @@ module "ecr" {
 
 # CODEPIPELINE
 
-//module "build" {
-//  source              = "git::https://github.com/cloudposse/terraform-aws-cicd.git?ref=master"
-//  namespace           = "${var.namespace}"
-//  name                = "${var.registry_name}"
-//  stage               = "${var.environment}"
-//
-//  # Enable the pipeline creation
-//  enabled             = "true"
-//
-//  # Application repository on GitHub
-//  github_oauth_token  = "${var.github_token}"
-//  repo_owner          = "toddnestor"
-//  repo_name           = "deployable-sinatra"
-//  branch              = "develop"
-//
-//  # http://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref.html
-//  # http://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
-//  build_image         = "aws/codebuild/docker:1.12.1"
-//  build_compute_type  = "BUILD_GENERAL1_SMALL"
-//
-//  # These attributes are optional, used as ENV variables when building Docker images and pushing them to ECR
-//  # For more info:
-//  # http://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker.html
-//  # https://www.terraform.io/docs/providers/aws/r/codebuild_project.html
-//  privileged_mode     = "true"
-//  image_repo_name     = "${module.ecr.repository_name}"
-//  image_tag           = "${var.environment}"
-//}
-
-# NEW CODEPIPELINE
-
 module "codedeploy-for-ecs" {
   source                     = "tmknom/codedeploy-for-ecs/aws"
   version                    = "1.2.0"
   name                       = "${var.environment}-sinatra"
   ecs_cluster_name           = "${aws_ecs_cluster.sinatra.name}"
   ecs_service_name           = "${var.environment}-sinatra"
-  lb_listener_arns           = ["${module.alb.load_balancer_id}"]
-  blue_lb_target_group_name  = "${aws_lb_target_group.green.name}"
-  green_lb_target_group_name = "${module.ecs-fargate.target_group_name}"
+  lb_listener_arns           = ["${aws_alb_listener.front_end_8443.arn}"]
+  blue_lb_target_group_name  = "${module.ecs-fargate.target_group_name}"
+  green_lb_target_group_name = "${aws_lb_target_group.green.name}"
 
   auto_rollback_enabled            = true
   auto_rollback_events             = ["DEPLOYMENT_FAILURE"]
@@ -294,9 +263,6 @@ module "codedeploy-for-ecs" {
   wait_time_in_minutes             = 5
   termination_wait_time_in_minutes = 0
   iam_path                         = "/service-role/"
-
-  # A listener can be defined for directing pre-blue/green failover traffic to.
-//  test_traffic_route_listener_arns = ["${local.alb_listener_test_arns}"]
 }
 
 data "aws_region" "current" {}
@@ -638,7 +604,6 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
     buildspec       = "app/buildspec.yml"
   }
 }
-
 
 resource "aws_codepipeline" "codepipeline" {
   name     = "demo"

@@ -1,3 +1,16 @@
 #!/bin/bash
 
-printf 'version: %s\nResources:\n  - TargetService:\n      Type: AWS::ECS::Service\n      Properties:\n        TaskDefinition: "arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:22"\n        LoadBalancerInfo:\n          ContainerName: "development-sinatra"\n          ContainerPort: "4000"\n        PlatformVersion: "LATEST"\n' $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION > appspec.yml
+read -r -d '' APP_SPEC <<TEST
+version: %s
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "arn:aws:ecs:us-east-2:591328757508:task-definition/development-sinatra:26"
+        LoadBalancerInfo:
+          ContainerName: "%s"
+          ContainerPort: "4000"
+        PlatformVersion: "LATEST"
+TEST
+
+printf "${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $IMAGE_TAG > appspec.yml
