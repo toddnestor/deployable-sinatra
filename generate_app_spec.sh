@@ -8,7 +8,7 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: %s
+        TaskDefinition: "%s"
         LoadBalancerInfo:
           ContainerName: "development-sinatra"
           ContainerPort: "4000"
