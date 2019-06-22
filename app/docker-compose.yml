@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 
 services:
   app:
@@ -10,4 +10,6 @@ services:
     ports:
       - 4000:4000
     volumes:
-      - .:/app
+      - type: bind
+        source: ./
+        target: /app

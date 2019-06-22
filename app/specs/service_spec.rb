@@ -11,6 +11,6 @@ describe '/healthcheck' do
   end
 
   it 'returns healthy' do
-    assert_equal 'healthy', last_response.body
+    assert_equal 'healthy!', last_response.body
   end
 end
