@@ -35,3 +35,5 @@ read -r -d '' TASK_DEFINITION <<TEST
 TEST
 
 printf "${TASK_DEFINITION}\n" > task_definition.json
+
+cat task_definition.json
