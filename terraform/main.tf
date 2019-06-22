@@ -493,7 +493,8 @@ resource "aws_iam_role_policy" "iam_code_build_policy" {
           "ecs:DescribeServices",
           "ecs:CreateService",
           "ecs:ListServices",
-          "ecs:UpdateService"
+          "ecs:UpdateService",
+          "iam:PassRole"
       ],
       "Resource": "*",
       "Effect": "Allow",
