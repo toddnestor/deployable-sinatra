@@ -20,7 +20,6 @@ phases:
       - echo Generate task definition json file
       - ./generate_task_definition.sh
       - aws ecs register-task-definition --cli-input-json "file://task_definition.json"
-      - export TASK_DEFINITION=`aws ecs list-task-definitions --family-prefix development-sinatra --max-items 1 --sort DESC --profile personal | grep task-definition`
       - echo Make generate_app_spec.sh executable
       - chmod +x ./generate_app_spec.sh
       - echo Generate appspec.yaml

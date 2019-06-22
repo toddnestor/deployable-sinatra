@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+TASK_DEFINITION=`aws ecs list-task-definitions --family-prefix development-sinatra --max-items 1 --sort DESC --profile personal | grep task-definition`
 
 read -r -d '' APP_SPEC <<APP_SPEC_TEXT
 version: %s
