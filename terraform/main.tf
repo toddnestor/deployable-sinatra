@@ -415,56 +415,6 @@ resource "aws_iam_role_policy" "ecsServiceRolePolicy" {
 }
 POLICY
 }
-#Allow all
-resource "aws_security_group" "elb_sg" {
-  name        = "allow_all"
-  description = "Allow all inbound and outbound traffic"
-  vpc_id      = "${var.vpc_id}"
-  ingress {
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  egress {
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags {
-    Name = "allow_all"
-  }
-}
-# Create a new load balancer
-resource "aws_elb" "flask-app-elb" {
-  name               = "flask-app"
-  subnets = ["${var.public_subnet_ids}"]
-  listener {
-    instance_port     = 5000
-    instance_protocol = "http"
-    lb_port           = 80
-    lb_protocol       = "http"
-  }
-
-  health_check {
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    timeout             = 3
-    target              = "HTTP:5000/"
-    interval            = 30
-  }
-
-  cross_zone_load_balancing   = true
-  idle_timeout                = 400
-  connection_draining         = true
-  connection_draining_timeout = 400
-  security_groups = ["${aws_security_group.elb_sg.id}"]
-  tags {
-    Name = "flask-app"
-  }
-}
 
 resource "aws_iam_role" "iam_code_build_role" {
   name = "iam_code_build_role"
@@ -613,6 +563,14 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
     environment_variable {
       name = "IMAGE_TAG"
       value = "${var.repo_name}"
+    }
+    environment_variable {
+      name = "EXECUTION_ROLE"
+      value = "${module.ecs-fargate.execution_role_arn}"
+    }
+    environment_variable {
+      name = "TASK_ROLE"
+      value = "${module.ecs-fargate.task_role_arn}"
     }
   }
 
