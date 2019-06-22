@@ -19,6 +19,9 @@ phases:
       - chmod +x ./generate_app_spec.sh
       - echo Generate appspec.yaml
       - ./generate_app_spec.sh
+      - echo Generate task definition json file
+      - ./generate_task_definition.sh
+      - aws ecs register-task-definition --cli-input-json "file://task_definition.json"
 artifacts:
   files:
     - appspec.yaml

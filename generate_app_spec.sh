@@ -2,7 +2,7 @@
 
 
 
-read -r -d '' APP_SPEC <<TEST
+read -r -d '' APP_SPEC <<APP_SPEC_TEXT
 version: %s
 Resources:
   - TargetService:
@@ -13,6 +13,6 @@ Resources:
           ContainerName: "development-sinatra"
           ContainerPort: "4000"
         PlatformVersion: "LATEST"
-TEST
+APP_SPEC_TEXT
 
 printf "${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $IMAGE_TAG > appspec.yaml
