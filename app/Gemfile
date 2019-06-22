@@ -8,6 +8,8 @@ git_source(:github) { |repo_name| "https://github.com/#{repo_name}" }
 gem 'ddtrace'
 gem 'pry'
 gem 'puma', '~> 3.0'
+gem 'rake'
+gem 'rack-test'
 gem 'sinatra', '~> 2.0'
 gem 'sinatra-contrib'
 

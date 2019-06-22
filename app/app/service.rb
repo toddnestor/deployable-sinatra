@@ -3,12 +3,14 @@
 
 require 'sinatra/base'
 
-module Pluto
+module App
   class Service < Sinatra::Base
-    require 'sinatra/reloader' if development?
-
     get '/' do
-      '🎉🤑💸💰'
+      '🎉🎉🎉🎉🎉🎉🎉🎉'
+    end
+
+    get '/healthcheck' do
+      [200, 'healthy']
     end
   end
 end
