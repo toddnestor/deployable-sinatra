@@ -171,7 +171,7 @@ module "ecs-fargate" {
   desired_count        = "2"
   health_check         = {
     port = "4000"
-    path = "/"
+    path = "/healthcheck"
     interval = 60
   }
 
