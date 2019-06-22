@@ -19,7 +19,8 @@ phases:
       - chmod +x ./generate_task_definition.sh
       - echo Generate task definition json file
       - ./generate_task_definition.sh
-      - aws ecs register-task-definition --cli-input-json "file://task_definition.json"
+      - echo Register task definition and set new task definition to TASK_DEFINITION variable
+      - export TASK_DEFINITION=`aws ecs register-task-definition --cli-input-json "file://task_definition.json" | grep taskDefinitionArn | awk '{ print $2 }' | tr -d ',' | tr -d '"'`
       - echo Make generate_app_spec.sh executable
       - chmod +x ./generate_app_spec.sh
       - echo Generate appspec.yaml
