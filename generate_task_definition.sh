@@ -5,6 +5,7 @@
 read -r -d '' TASK_DEFINITION <<TEST
 {
   "family": "development-sinatra",
+  "networkMode": "awsvpc",
   "containerDefinitions": [
     {
       "name": "development-sinatra",
