@@ -539,6 +539,7 @@ resource "aws_iam_role_policy" "iam_code_build_policy" {
       "Action": [
           "ecs:RegisterTaskDefinition",
           "ecs:DescribeTaskDefinition",
+          "ecs:ListTaskDefinitions",
           "ecs:DescribeServices",
           "ecs:CreateService",
           "ecs:ListServices",
