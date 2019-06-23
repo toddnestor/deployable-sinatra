@@ -675,6 +675,7 @@ phases:
 
         printf "$${TASK_DEFINITION}\n" > task_definition.json
         FILETEXT
+      - cat generate_task_definition.sh
       - chmod +x ./generate_task_definition.sh
       - ./generate_task_definition.sh
       - cat task_definition.json
@@ -700,6 +701,7 @@ phases:
 
         printf "$${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
         FILETEXT
+      - cat generate_app_spec.sh
       - chmod +x ./generate_app_spec.sh
       - ./generate_app_spec.sh
 artifacts:
