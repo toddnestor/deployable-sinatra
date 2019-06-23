@@ -639,7 +639,7 @@ phases:
         cat <<FILETEXT >> generate_task_definition.sh
         #!/bin/bash
 
-        read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
+        read -r -d '' TASK_DEFINITION << 'TASK_DEFINITION_TEXT'
         {
           "family": "development-sinatra",
           "executionRoleArn": "$EXECUTION_ROLE",
@@ -686,7 +686,7 @@ phases:
         cat <<FILETEXT >> generate_app_spec.sh
         #!/bin/bash
 
-        read -r -d '' APP_SPEC <<APP_SPEC_TEXT
+        read -r -d '' APP_SPEC << 'APP_SPEC_TEXT'
         version: %s
         Resources:
           - TargetService:
