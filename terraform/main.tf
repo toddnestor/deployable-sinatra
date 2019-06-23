@@ -622,7 +622,7 @@ resource "aws_codebuild_project" "codebuild_task_definition" {
   }
 
   source {
-    type            = "NO_SOURCE"
+    type            = "CODEPIPELINE"
     buildspec       = <<BUILDSPEC
 version: 0.2
 
