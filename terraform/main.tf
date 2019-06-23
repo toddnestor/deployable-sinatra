@@ -581,6 +581,126 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
   }
 }
 
+resource "aws_codebuild_project" "codebuild_task_definition" {
+  name         = "codebuild_task_definition"
+  description  = "build docker images"
+  build_timeout      = "300"
+  service_role = "${aws_iam_role.iam_code_build_role.arn}"
+
+  artifacts {
+    type = "CODEPIPELINE"
+    encryption_disabled = "true"
+  }
+  environment {
+    compute_type = "BUILD_GENERAL1_SMALL"
+    image        = "aws/codebuild/docker:17.09.0"
+    type         = "LINUX_CONTAINER"
+    privileged_mode = true
+
+    environment_variable {
+      "name"  = "AWS_REGION"
+      "value" = "${data.aws_region.current.name}"
+    }
+    environment_variable {
+      "name"  = "AWS_ACCOUNT_ID"
+      "value" = "${data.aws_caller_identity.current.account_id}"
+    }
+    environment_variable {
+      "name"  = "IMAGE_REPO_NAME"
+      "value" = "${module.ecr.repository_name}"
+    }
+    environment_variable {
+      name = "IMAGE_TAG"
+      value = "${var.repo_name}"
+    }
+    environment_variable {
+      name = "EXECUTION_ROLE"
+      value = "${module.ecs-fargate.execution_role_arn}"
+    }
+    environment_variable {
+      name = "TASK_ROLE"
+      value = "${module.ecs-fargate.task_role_arn}"
+    }
+  }
+
+  source {
+    type            = "NO_SOURCE"
+    buildspec       = <<BUILDSPEC
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --no-include-email --region $AWS_REGION)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Generate task definition json file
+      - |
+        read -r -d '' TASK_DEFINITION <<TEST
+        {
+          "family": "development-sinatra",
+          "executionRoleArn": "$EXECUTION_ROLE",
+          "taskRoleArn": "$TASK_ROLE",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "256",
+          "memory": "512",
+          "containerDefinitions": [
+            {
+              "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "development-sinatra",
+                  "awslogs-region": "$AWS_REGION",
+                  "awslogs-stream-prefix": "container"
+                }
+              },
+              "name": "development-sinatra",
+              "image": "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION",
+              "portMappings": [
+                {
+                  "protocol": "tcp",
+                  "containerPort": 4000,
+                  "hostPort": 4000
+                }
+              ],
+              "essential": true
+            }
+          ]
+        }
+        TEST
+
+        printf "${TASK_DEFINITION}\n" > task_definition.json
+
+        cat task_definition.json
+      - echo Register task definition and set new task definition to TASK_DEFINITION variable
+      - export TASK_DEFINITION=`aws ecs register-task-definition --cli-input-json "file://task_definition.json" | grep taskDefinitionArn | awk '{ print $2 }' | tr -d ',' | tr -d '"'`
+      - echo Generate appspec.yaml
+      - |
+        read -r -d '' APP_SPEC <<APP_SPEC_TEXT
+        version: %s
+        Resources:
+          - TargetService:
+              Type: AWS::ECS::Service
+              Properties:
+                TaskDefinition: "%s"
+                LoadBalancerInfo:
+                  ContainerName: "development-sinatra"
+                  ContainerPort: "4000"
+                PlatformVersion: "LATEST"
+        APP_SPEC_TEXT
+
+        printf "${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
+artifacts:
+  files:
+    - appspec.yaml
+
+BUILDSPEC
+  }
+}
+
 resource "aws_codepipeline" "codepipeline" {
   name     = "deployable-sinatra"
   role_arn = "${aws_iam_role.iam_codepipeline_role.arn}"
@@ -621,10 +741,26 @@ resource "aws_codepipeline" "codepipeline" {
       owner           = "AWS"
       provider        = "CodeBuild"
       input_artifacts = ["code"]
-      output_artifacts = ["task"]
       version         = "1"
       configuration {
         ProjectName = "${aws_codebuild_project.codebuild_docker_image.name}"
+      }
+    }
+  }
+
+  # We use CodeBuild to generate the task definition
+  stage {
+    name = "GenerateTaskDefinitionAndAppSpec"
+
+    action {
+      name            = "Build"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      output_artifacts = ["task"]
+      version         = "1"
+      configuration {
+        ProjectName = "${aws_codebuild_project.codebuild_task_definition.name}"
       }
     }
   }
