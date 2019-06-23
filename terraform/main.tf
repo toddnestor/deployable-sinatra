@@ -636,10 +636,10 @@ phases:
       - echo Build started on `date`
       - echo Generate task definition json file
       - |
-        cat <<FILETEXT >> generate_task_definition.sh
+        cat << 'FILETEXT' >> generate_task_definition.sh
         #!/bin/bash
 
-        read -r -d '' TASK_DEFINITION << 'TASK_DEFINITION_TEXT'
+        read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
         {
           "family": "development-sinatra",
           "executionRoleArn": "$EXECUTION_ROLE",
@@ -683,10 +683,10 @@ phases:
       - export TASK_DEFINITION=`aws ecs register-task-definition --cli-input-json "file://task_definition.json" | grep taskDefinitionArn | awk '{ print $2 }' | tr -d ',' | tr -d '"'`
       - echo Generate appspec.yaml
       - |
-        cat <<FILETEXT >> generate_app_spec.sh
+        cat << 'FILETEXT' >> generate_app_spec.sh
         #!/bin/bash
 
-        read -r -d '' APP_SPEC << 'APP_SPEC_TEXT'
+        read -r -d '' APP_SPEC <<APP_SPEC_TEXT
         version: %s
         Resources:
           - TargetService:
