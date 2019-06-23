@@ -636,6 +636,9 @@ phases:
       - echo Build started on `date`
       - echo Generate task definition json file
       - |
+        cat <<FILETEXT >> generate_task_definition.sh
+        #!/bin/bash
+
         read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
         {
           "family": "development-sinatra",
@@ -670,12 +673,18 @@ phases:
         }
         TASK_DEFINITION_TEXT
 
-      - printf "$${TASK_DEFINITION}\n" > task_definition.json
+        printf "$${TASK_DEFINITION}\n" > task_definition.json
+        FILETEXT
+      - chmod +x ./generate_task_definition.sh
+      - ./generate_task_definition.sh
       - cat task_definition.json
       - echo Register task definition and set new task definition to TASK_DEFINITION variable
       - export TASK_DEFINITION=`aws ecs register-task-definition --cli-input-json "file://task_definition.json" | grep taskDefinitionArn | awk '{ print $2 }' | tr -d ',' | tr -d '"'`
       - echo Generate appspec.yaml
       - |
+        cat <<FILETEXT >> generate_app_spec.sh
+        #!/bin/bash
+
         read -r -d '' APP_SPEC <<APP_SPEC_TEXT
         version: %s
         Resources:
@@ -690,6 +699,9 @@ phases:
         APP_SPEC_TEXT
 
         printf "$${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
+        FILETEXT
+      - chmod +x ./generate_app_spec.sh
+      - ./generate_app_spec.sh
 artifacts:
   files:
     - appspec.yaml
