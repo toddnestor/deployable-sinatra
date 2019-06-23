@@ -668,11 +668,10 @@ phases:
             }
           ]
         }
-TASK_DEFINITION_TEXT
+        TASK_DEFINITION_TEXT
 
-        printf "$${TASK_DEFINITION}\n" > task_definition.json
-
-        cat task_definition.json
+      - printf "$${TASK_DEFINITION}\n" > task_definition.json
+      - cat task_definition.json
       - echo Register task definition and set new task definition to TASK_DEFINITION variable
       - export TASK_DEFINITION=`aws ecs register-task-definition --cli-input-json "file://task_definition.json" | grep taskDefinitionArn | awk '{ print $2 }' | tr -d ',' | tr -d '"'`
       - echo Generate appspec.yaml
@@ -688,7 +687,7 @@ TASK_DEFINITION_TEXT
                   ContainerName: "development-sinatra"
                   ContainerPort: "4000"
                 PlatformVersion: "LATEST"
-APP_SPEC_TEXT
+        APP_SPEC_TEXT
 
         printf "$${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
 artifacts:
