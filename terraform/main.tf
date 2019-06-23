@@ -634,6 +634,7 @@ phases:
   build:
     commands:
       - echo Build started on `date`
+      - export COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - echo Generate task definition json file
       - |
         cat << 'FILETEXT' >> generate_task_definition.sh
@@ -659,7 +660,7 @@ phases:
                 }
               },
               "name": "development-sinatra",
-              "image": "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION",
+              "image": "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$COMMIT_HASH",
               "portMappings": [
                 {
                   "protocol": "tcp",
@@ -699,7 +700,7 @@ phases:
                 PlatformVersion: "LATEST"
         APP_SPEC_TEXT
 
-        printf "$${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
+        printf "$${APP_SPEC}\n" $IMAGE_TAG-$COMMIT_HASH $TASK_DEFINITION > appspec.yaml
         FILETEXT
       - cat generate_app_spec.sh
       - chmod +x ./generate_app_spec.sh
