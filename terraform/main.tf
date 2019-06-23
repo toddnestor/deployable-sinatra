@@ -541,7 +541,6 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
 
   artifacts {
     type = "CODEPIPELINE"
-    encryption_disabled = "true"
   }
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
@@ -588,8 +587,7 @@ resource "aws_codebuild_project" "codebuild_task_definition" {
   service_role = "${aws_iam_role.iam_code_build_role.arn}"
 
   artifacts {
-    type = "CODEPIPELINE"
-    encryption_disabled = "true"
+    type = "NO_ARTIFACTS"
   }
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
@@ -672,7 +670,7 @@ phases:
         }
         TEST
 
-        printf "${TASK_DEFINITION}\n" > task_definition.json
+        printf "$${TASK_DEFINITION}\n" > task_definition.json
 
         cat task_definition.json
       - echo Register task definition and set new task definition to TASK_DEFINITION variable
@@ -692,7 +690,7 @@ phases:
                 PlatformVersion: "LATEST"
         APP_SPEC_TEXT
 
-        printf "${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
+        printf "$${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
 artifacts:
   files:
     - appspec.yaml
@@ -741,6 +739,7 @@ resource "aws_codepipeline" "codepipeline" {
       owner           = "AWS"
       provider        = "CodeBuild"
       input_artifacts = ["code"]
+      output_artifacts = ["none"]
       version         = "1"
       configuration {
         ProjectName = "${aws_codebuild_project.codebuild_docker_image.name}"
@@ -757,6 +756,7 @@ resource "aws_codepipeline" "codepipeline" {
       category        = "Build"
       owner           = "AWS"
       provider        = "CodeBuild"
+      input_artifacts = ["none"]
       output_artifacts = ["task"]
       version         = "1"
       configuration {
