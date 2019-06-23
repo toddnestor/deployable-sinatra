@@ -752,7 +752,6 @@ resource "aws_codepipeline" "codepipeline" {
       owner           = "AWS"
       provider        = "CodeBuild"
       input_artifacts = ["code"]
-      output_artifacts = ["none"]
       version         = "1"
       configuration {
         ProjectName = "${aws_codebuild_project.codebuild_docker_image.name}"
@@ -769,7 +768,7 @@ resource "aws_codepipeline" "codepipeline" {
       category        = "Build"
       owner           = "AWS"
       provider        = "CodeBuild"
-      input_artifacts = ["none"]
+      input_artifacts = ["code"]
       output_artifacts = ["task"]
       version         = "1"
       configuration {
