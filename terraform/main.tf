@@ -587,7 +587,7 @@ resource "aws_codebuild_project" "codebuild_task_definition" {
   service_role = "${aws_iam_role.iam_code_build_role.arn}"
 
   artifacts {
-    type = "NO_ARTIFACTS"
+    type = "CODEPIPELINE"
   }
   environment {
     compute_type = "BUILD_GENERAL1_SMALL"
@@ -636,7 +636,7 @@ phases:
       - echo Build started on `date`
       - echo Generate task definition json file
       - |
-        read -r -d '' TASK_DEFINITION <<TEST
+        read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
         {
           "family": "development-sinatra",
           "executionRoleArn": "$EXECUTION_ROLE",
@@ -668,7 +668,7 @@ phases:
             }
           ]
         }
-        TEST
+TASK_DEFINITION_TEXT
 
         printf "$${TASK_DEFINITION}\n" > task_definition.json
 
@@ -688,7 +688,7 @@ phases:
                   ContainerName: "development-sinatra"
                   ContainerPort: "4000"
                 PlatformVersion: "LATEST"
-        APP_SPEC_TEXT
+APP_SPEC_TEXT
 
         printf "$${APP_SPEC}\n" $IMAGE_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION $TASK_DEFINITION > appspec.yaml
 artifacts:
