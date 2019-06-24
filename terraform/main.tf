@@ -22,7 +22,7 @@ module "staging-sinatra" {
   name = "deployable-sinatra"
   environment = "staging"
   repo_name = "deployable-sinatra"
-  git_branch = "develop"
+  git_branch = "staging"
   subdomain = "test-two"
   internal = false
 }
