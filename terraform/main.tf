@@ -814,10 +814,10 @@ resource "godaddy_domain_record" "sinatra" {
   }
 }
 
-resource "godaddy_domain_record" "sinatra" {
+resource "godaddy_domain_record" "implicit-subdomain" {
   domain   = "${var.dns_zone_name}"
   count = "${replace(replace(var.subdomain, "/^$/", "1"),
-             "/.{1,}/", "0")}"
+             "/[^1]/", "0")}"
 
   record {
     name = "${var.name}"
@@ -827,10 +827,10 @@ resource "godaddy_domain_record" "sinatra" {
   }
 }
 
-resource "godaddy_domain_record" "sinatra" {
+resource "godaddy_domain_record" "custom-subdomain" {
   domain   = "${var.dns_zone_name}"
   count = "${replace(replace(var.subdomain, "/^$/", "0"),
-             "/.{1,}/", "1")}"
+             "/[^0]/", "1")}"
 
   record {
     name = "${var.subdomain}"
