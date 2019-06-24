@@ -163,7 +163,7 @@ module "ecs-fargate" {
   source  = "git::https://github.com/RaiseMe/terraform-aws-ecs-fargate.git?ref=tags/v0.1.2.5"
 
   cluster_id         = "${aws_ecs_cluster.application.arn}"
-  lb_arn             = "${element(concat(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id), 0)}"
+  lb_arn             = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
   name_prefix        = "${var.environment}-${var.name}"
   private_subnet_ids = ["${var.public_subnet_ids}"]
   vpc_id             = "${var.vpc_id}"
@@ -229,7 +229,7 @@ resource "aws_security_group_rule" "lb_to_containers" {
 }
 
 resource "aws_alb_listener" "front_end_80" {
-  load_balancer_arn = "${element(concat(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id), 0)}"
+  load_balancer_arn = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
   port = "80"
   protocol = "HTTP"
 
@@ -240,7 +240,7 @@ resource "aws_alb_listener" "front_end_80" {
 }
 
 resource "aws_alb_listener" "front_end_8443" {
-  load_balancer_arn = "${element(concat(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id), 0)}"
+  load_balancer_arn = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
   port              = "8443"
   protocol          = "HTTP"
 
@@ -809,7 +809,7 @@ resource "godaddy_domain_record" "sinatra" {
   record {
     name = "deployable-sinatra"
     type = "CNAME"
-    data = "${element(concat(module.alb-public.dns_name, module.alb-internal.dns_name), 0)}"
+    data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
     ttl = 600
   }
 }
@@ -822,7 +822,7 @@ resource "godaddy_domain_record" "implicit-subdomain" {
   record {
     name = "${var.name}"
     type = "CNAME"
-    data = "${element(concat(module.alb-public.dns_name, module.alb-internal.dns_name), 0)}"
+    data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
     ttl = 600
   }
 }
@@ -835,7 +835,7 @@ resource "godaddy_domain_record" "custom-subdomain" {
   record {
     name = "${var.subdomain}"
     type = "CNAME"
-    data = "${element(concat(module.alb-public.dns_name, module.alb-internal.dns_name), 0)}"
+    data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
     ttl = 600
   }
 }
