@@ -56,7 +56,7 @@ module "raise_ror_frontend_sg_80" {
   source = "terraform-aws-modules/security-group/aws//modules/http-80"
   version = "2.17.0"
 
-  name        = "PublicWebServer80-${var.name}"
+  name        = "PublicWebServer80-${var.environment}-${var.name}"
   description = "Security group for web-server with HTTP ports open to EVERYONE"
   vpc_id      = "${var.vpc_id}"
 
@@ -64,7 +64,7 @@ module "raise_ror_frontend_sg_80" {
 
   tags = {
     User           = "Terraform"
-    Name           = "PublicWebServer80-${var.name}"
+    Name           = "PublicWebServer80-${var.environment}-${var.name}"
     "User:Service" = "${var.name}"
     Environment    = "${var.environment}"
   }
@@ -74,7 +74,7 @@ module "raise_ror_frontend_sg_8443" {
   source = "terraform-aws-modules/security-group/aws//modules/https-8443"
   version = "2.17.0"
 
-  name        = "PublicWebServer8443"
+  name        = "PublicWebServer8443-${var.environment}-${var.name}"
   description = "Security group for web-server with HTTPS ports open to EVERYONE"
   vpc_id      = "${var.vpc_id}"
 
@@ -82,7 +82,7 @@ module "raise_ror_frontend_sg_8443" {
 
   tags = {
     User           = "Terraform"
-    Name           = "PublicWebServer8443-${var.name}"
+    Name           = "PublicWebServer8443-${var.environment}-${var.name}"
     "User:Service" = "${var.name}"
     Environment    = "${var.environment}"
   }
@@ -254,8 +254,8 @@ resource "aws_alb_listener" "front_end_8443" {
 
 module "ecr" {
   source              = "git::https://github.com/cloudposse/terraform-aws-ecr.git?ref=master"
-  name                = "${var.registry_name}"
-  namespace           = "${var.namespace}"
+  name                = "${var.name}"
+  namespace           = "RaiseMe"
   stage               = "${var.environment}"
 }
 
@@ -284,7 +284,7 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "iam_codepipeline_role" {
-  name = "${var.name}-codepipeline"
+  name = "${var.environment}-${var.name}-codepipeline"
   permissions_boundary = ""
   assume_role_policy = <<EOF
 {
@@ -311,7 +311,7 @@ EOF
 
 }
 resource "aws_iam_role_policy" "codedeploypolicy" {
-  name = "${var.name}-codedeploypolicy"
+  name = "${var.environment}-${var.name}-codedeploypolicy"
   role = "${module.codedeploy-for-ecs.iam_role_name}"
 
   policy = <<EOF
@@ -352,7 +352,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "iam_codepipeline_policy" {
-  name = "${var.name}-iam_codepipeline_policy"
+  name = "${var.environment}-${var.name}-iam_codepipeline_policy"
   role = "${aws_iam_role.iam_codepipeline_role.id}"
 
   policy = <<EOF
@@ -381,7 +381,7 @@ EOF
 }
 
 resource "aws_iam_role" "iam_ecs_service_role" {
-  name = "${var.name}-ecsServiceRole"
+  name = "${var.environment}-${var.name}-ecsServiceRole"
   path = "/"
   permissions_boundary = ""
   assume_role_policy = <<EOF
@@ -402,7 +402,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "ecsServiceRolePolicy" {
-  name = "${var.name}-ecsServiceRolePolicy"
+  name = "${var.environment}-${var.name}-ecsServiceRolePolicy"
   role = "${aws_iam_role.iam_ecs_service_role.id}"
 
   policy = <<POLICY
@@ -428,7 +428,7 @@ POLICY
 }
 
 resource "aws_iam_role" "iam_code_build_role" {
-  name = "${var.name}-iam_code_build_role"
+  name = "${var.environment}-${var.name}-iam_code_build_role"
   permissions_boundary = ""
   assume_role_policy = <<EOF
 {
@@ -455,7 +455,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "iam_code_build_policy" {
-  name = "${var.name}-iam_code_build_policy"
+  name = "${var.environment}-${var.name}-iam_code_build_policy"
   role = "${aws_iam_role.iam_code_build_role.id}"
 
   policy = <<POLICY
@@ -534,18 +534,18 @@ resource "aws_iam_role_policy" "iam_code_build_policy" {
 POLICY
 }
 resource "aws_s3_bucket" "default" {
-  bucket = "${var.name}-codepipeline"
+  bucket = "${var.environment}-${var.name}-codepipeline"
   acl    = "private"
   force_destroy = "true"
 
   tags {
-    Name        = "${var.name}-codepipeline"
+    Name        = "${var.name}"
     Environment = "${var.environment}"
   }
 }
 
 resource "aws_codebuild_project" "codebuild_docker_image" {
-  name         = "${var.name}-codebuild_docker_image"
+  name         = "${var.environment}-${var.name}-codebuild_docker_image"
   description  = "build docker images"
   build_timeout      = "300"
   service_role = "${aws_iam_role.iam_code_build_role.arn}"
@@ -584,7 +584,7 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
 }
 
 resource "aws_codebuild_project" "codebuild_task_definition" {
-  name         = "${var.name}-codebuild_task_definition"
+  name         = "${var.environment}-${var.name}-codebuild_task_definition"
   description  = "generate task definition and appspec"
   build_timeout      = "300"
   service_role = "${aws_iam_role.iam_code_build_role.arn}"
@@ -645,7 +645,7 @@ phases:
 
         read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
         {
-          "family": "${var.name}",
+          "family": "${var.environment}-${var.name}",
           "executionRoleArn": "$EXECUTION_ROLE",
           "taskRoleArn": "$TASK_ROLE",
           "networkMode": "awsvpc",
@@ -657,12 +657,12 @@ phases:
               "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                  "awslogs-group": "${var.name}",
+                  "awslogs-group": "${var.environment}-${var.name}",
                   "awslogs-region": "$AWS_REGION",
                   "awslogs-stream-prefix": "container"
                 }
               },
-              "name": "${var.name}",
+              "name": "${var.environment}-${var.name}",
               "image": "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$COMMIT_HASH",
               "portMappings": [
                 {
@@ -698,7 +698,7 @@ phases:
               Properties:
                 TaskDefinition: "%s"
                 LoadBalancerInfo:
-                  ContainerName: "${var.name}"
+                  ContainerName: "${var.environment}-${var.name}"
                   ContainerPort: "4000"
                 PlatformVersion: "LATEST"
         APP_SPEC_TEXT
@@ -717,7 +717,7 @@ BUILDSPEC
 }
 
 resource "aws_codepipeline" "codepipeline" {
-  name     = "${var.name}"
+  name     = "${var.environment}-${var.name}"
   role_arn = "${aws_iam_role.iam_codepipeline_role.arn}"
 
   artifact_store {
@@ -803,37 +803,11 @@ resource "aws_codepipeline" "codepipeline" {
 
 # GODADDY DNS #
 
-resource "godaddy_domain_record" "sinatra" {
+resource "godaddy_domain_record" "subdomain" {
   domain   = "${var.dns_zone_name}"
 
   record {
-    name = "deployable-sinatra"
-    type = "CNAME"
-    data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
-    ttl = 600
-  }
-}
-
-resource "godaddy_domain_record" "implicit-subdomain" {
-  domain   = "${var.dns_zone_name}"
-  count = "${replace(replace(var.subdomain, "/^$/", "1"),
-             "/[^1]/", "0")}"
-
-  record {
-    name = "${var.name}"
-    type = "CNAME"
-    data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
-    ttl = 600
-  }
-}
-
-resource "godaddy_domain_record" "custom-subdomain" {
-  domain   = "${var.dns_zone_name}"
-  count = "${replace(replace(var.subdomain, "/^$/", "0"),
-             "/[^0]/", "1")}"
-
-  record {
-    name = "${var.subdomain}"
+    name = "${coalesce(var.subdomain, var.name)}"
     type = "CNAME"
     data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
     ttl = 600
