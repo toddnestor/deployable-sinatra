@@ -36,3 +36,9 @@ variable "subdomain" {
 variable "container_port" {
   default = "4000"
 }
+variable "memory" {
+  default = "512"
+}
+variable "cpu" {
+  default = "256"
+}

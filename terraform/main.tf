@@ -650,8 +650,8 @@ phases:
           "taskRoleArn": "$TASK_ROLE",
           "networkMode": "awsvpc",
           "requiresCompatibilities": ["FARGATE"],
-          "cpu": "256",
-          "memory": "512",
+          "cpu": "${var.cpu}",
+          "memory": "${var.memory}",
           "containerDefinitions": [
             {
               "logConfiguration": {
