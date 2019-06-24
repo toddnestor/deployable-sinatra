@@ -165,7 +165,7 @@ module "ecs-fargate" {
   cluster_id         = "${aws_ecs_cluster.application.arn}"
   lb_arn             = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
   name_prefix        = "${var.environment}-${var.name}"
-  private_subnet_ids = ["${var.public_subnet_ids}"]
+  private_subnet_ids = ["${var.private_subnet_ids}"]
   vpc_id             = "${var.vpc_id}"
 
   task_container_image = "${module.ecr.registry_url}:${var.container_version}"
