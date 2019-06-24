@@ -645,7 +645,7 @@ phases:
 
         read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
         {
-          "family": "development-sinatra",
+          "family": "${var.name}",
           "executionRoleArn": "$EXECUTION_ROLE",
           "taskRoleArn": "$TASK_ROLE",
           "networkMode": "awsvpc",
@@ -657,12 +657,12 @@ phases:
               "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                  "awslogs-group": "development-sinatra",
+                  "awslogs-group": "${var.name}",
                   "awslogs-region": "$AWS_REGION",
                   "awslogs-stream-prefix": "container"
                 }
               },
-              "name": "development-sinatra",
+              "name": "${var.name}",
               "image": "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$COMMIT_HASH",
               "portMappings": [
                 {
@@ -698,7 +698,7 @@ phases:
               Properties:
                 TaskDefinition: "%s"
                 LoadBalancerInfo:
-                  ContainerName: "development-sinatra"
+                  ContainerName: "${var.name}"
                   ContainerPort: "4000"
                 PlatformVersion: "LATEST"
         APP_SPEC_TEXT
@@ -795,7 +795,7 @@ resource "aws_codepipeline" "codepipeline" {
 
       configuration {
         ApplicationName = "${module.codedeploy-for-ecs.codedeploy_app_name}"
-        DeploymentGroupName = "${var.environment}-sinatra"
+        DeploymentGroupName = "${var.environment}-${var.name}"
       }
     }
   }
