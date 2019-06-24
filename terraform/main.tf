@@ -17,52 +17,38 @@ provider "godaddy" {
 
 # S3
 
-//resource "aws_s3_bucket" "logs_bucket" {
-//  bucket = "${var.environment}-sinatra-alb-logs"
-//}
-//
-//resource "aws_iam_role" "logs_role" {
-//  name = "alb-logs-role"
-//
-//  assume_role_policy = <<EOF
-//{
-//  "Version": "2012-10-17",
-//  "Statement": [
-//    {
-//      "Action": "sts:AssumeRole",
-//      "Principal": {
-//        "Service": "s3.amazonaws.com"
-//      },
-//      "Effect": "Allow",
-//      "Sid": ""
-//    }
-//  ]
-//}
-//EOF
-//}
-//
-//resource "aws_iam_role_policy" "codepipeline_policy" {
-//  name = "alb_logs_policy"
-//  role = "${aws_iam_role.logs_role.id}"
-//
-//  policy = <<EOF
-//{
-//  "Version": "2012-10-17",
-//  "Statement": [
-//    {
-//      "Effect":"Allow",
-//      "Action": [
-//        "s3:*"
-//      ],
-//      "Resource": [
-//        "${aws_s3_bucket.logs_bucket.arn}",
-//        "${aws_s3_bucket.logs_bucket.arn}/*"
-//      ]
-//    }
-//  ]
-//}
-//EOF
-//}
+data "aws_elb_service_account" "default" {}
+
+data "aws_iam_policy_document" "albs3" {
+  statement {
+    sid = "AllowToPutLoadBalancerLogsToS3Bucket"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["${data.aws_elb_service_account.default.arn}"]
+    }
+
+    effect = "Allow"
+    actions = ["s3:PutObject"]
+    resources = ["arn:aws:s3:::${var.environment}-sinatra-alb-logs/AWSLogs/*"]
+  }
+}
+
+resource "aws_s3_bucket" "logs_bucket" {
+  bucket = "${var.environment}-sinatra-alb-logs"
+  policy = "${data.aws_iam_policy_document.albs3.json}"
+  force_destroy = "true"
+  acl    = "log-delivery-write"
+
+  lifecycle_rule = {
+    id      = "log-expiration"
+    enabled = "true"
+
+    expiration = {
+      days = "30"
+    }
+  }
+}
 
 # ALB
 
@@ -114,8 +100,7 @@ module "alb" {
 
   enable_cross_zone_load_balancing = true
   load_balancer_is_internal        = false
-  logging_enabled = false
-  # log_bucket_name                  = "${aws_s3_bucket.logs_bucket.bucket}"
+  log_bucket_name                  = "${aws_s3_bucket.logs_bucket.bucket}"
 
   tags = {
     User           = "Terraform"
@@ -563,14 +548,6 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
     environment_variable {
       name = "IMAGE_TAG"
       value = "${var.repo_name}"
-    }
-    environment_variable {
-      name = "EXECUTION_ROLE"
-      value = "${module.ecs-fargate.execution_role_arn}"
-    }
-    environment_variable {
-      name = "TASK_ROLE"
-      value = "${module.ecs-fargate.task_role_arn}"
     }
   }
 
