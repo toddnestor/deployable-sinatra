@@ -30,12 +30,12 @@ data "aws_iam_policy_document" "albs3" {
 
     effect = "Allow"
     actions = ["s3:PutObject"]
-    resources = ["arn:aws:s3:::${var.environment}-sinatra-alb-logs/AWSLogs/*"]
+    resources = ["arn:aws:s3:::${var.environment}-${var.name}-alb-logs/AWSLogs/*"]
   }
 }
 
 resource "aws_s3_bucket" "logs_bucket" {
-  bucket = "${var.environment}-sinatra-alb-logs"
+  bucket = "${var.environment}-${var.name}-alb-logs"
   policy = "${data.aws_iam_policy_document.albs3.json}"
   force_destroy = "true"
   acl    = "log-delivery-write"
@@ -56,7 +56,7 @@ module "raise_ror_frontend_sg_80" {
   source = "terraform-aws-modules/security-group/aws//modules/http-80"
   version = "2.17.0"
 
-  name        = "PublicWebServer80"
+  name        = "PublicWebServer80-${var.name}"
   description = "Security group for web-server with HTTP ports open to EVERYONE"
   vpc_id      = "${var.vpc_id}"
 
@@ -64,8 +64,8 @@ module "raise_ror_frontend_sg_80" {
 
   tags = {
     User           = "Terraform"
-    Name           = "PublicWebServer80"
-    "User:Service" = "MainRorApp"
+    Name           = "PublicWebServer80-${var.name}"
+    "User:Service" = "${var.name}"
     Environment    = "${var.environment}"
   }
 }
@@ -82,17 +82,18 @@ module "raise_ror_frontend_sg_8443" {
 
   tags = {
     User           = "Terraform"
-    Name           = "PublicWebServer8443"
-    "User:Service" = "MainRorApp"
+    Name           = "PublicWebServer8443-${var.name}"
+    "User:Service" = "${var.name}"
     Environment    = "${var.environment}"
   }
 }
 
-module "alb" {
+module "alb-public" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "3.5.0"
+  version = "3.6.0"
+  create_alb = "${1 - var.internal}"
 
-  load_balancer_name = "${var.environment}-ALBSinatra"
+  load_balancer_name = "${var.environment}-${var.name}"
 
   security_groups = ["${module.raise_ror_frontend_sg_80.this_security_group_id}"]
   subnets         = ["${var.public_subnet_ids}"]
@@ -104,20 +105,45 @@ module "alb" {
 
   tags = {
     User           = "Terraform"
-    Name           = "ALBMRorApp"
-    "User:Service" = "MainRorApp"
+    Name           = "ALB-${var.name}"
+    "User:Service" = "${var.name}"
+    "User:Type" = "WebServer"
+    Environment    = "${var.environment}"
+  }
+}
+
+module "alb-internal" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "3.6.0"
+  create_alb = "${var.internal}"
+
+  load_balancer_name = "${var.environment}-${var.name}"
+
+  security_groups = ["${module.raise_ror_frontend_sg_80.this_security_group_id}"]
+  subnets         = ["${var.private_subnet_ids}"]
+  vpc_id          = "${var.vpc_id}"
+
+  enable_cross_zone_load_balancing = true
+  load_balancer_is_internal        = true
+  log_bucket_name                  = "${aws_s3_bucket.logs_bucket.bucket}"
+
+  tags = {
+    User           = "Terraform"
+    Name           = "ALB-${var.name}"
+    "User:Service" = "${var.name}"
+    "User:Type" = "WebServer"
     Environment    = "${var.environment}"
   }
 }
 
 # ECS
 
-resource "aws_ecs_cluster" "sinatra" {
-  name = "ECS${var.environment}"
+resource "aws_ecs_cluster" "application" {
+  name = "ECS${var.environment}-${var.name}"
   tags = {
     User        = "Terraform"
-    Name        = "ECS${var.environment}"
-    "User:Service" = "MainRorApp"
+    Name        = "ECS${var.environment}-${var.name}"
+    "User:Service" = "${var.name}"
     Environment = "${var.environment}"
   }
 }
@@ -136,14 +162,14 @@ module "ecs-fargate" {
 
   source  = "git::https://github.com/RaiseMe/terraform-aws-ecs-fargate.git?ref=tags/v0.1.2.5"
 
-  cluster_id         = "${aws_ecs_cluster.sinatra.arn}"
-  lb_arn             = "${module.alb.load_balancer_id}"
-  name_prefix        = "${var.environment}-sinatra"
+  cluster_id         = "${aws_ecs_cluster.application.arn}"
+  lb_arn             = "${element(concat(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id), 0)}"
+  name_prefix        = "${var.environment}-${var.name}"
   private_subnet_ids = ["${var.public_subnet_ids}"]
   vpc_id             = "${var.vpc_id}"
 
   task_container_image = "${module.ecr.registry_url}:${var.container_version}"
-  task_container_port  = "4000"
+  task_container_port  = "${var.container_port}"
   task_container_assign_public_ip = true
 
   task_container_environment_count = 10
@@ -155,40 +181,40 @@ module "ecs-fargate" {
 
   desired_count        = "2"
   health_check         = {
-    port = "4000"
+    port = "${var.container_port}"
     path = "/healthcheck"
     interval = 60
   }
 
   tags = {
     User        = "Terraform"
-    Name        = "Fargate${var.environment}"
-    "User:Service" = "MainRorApp"
+    Name        = "Fargate${var.environment}-${var.name}"
+    "User:Service" = "${var.name}"
     Environment = "${var.environment}"
   }
 }
 
 resource "aws_lb_target_group" "green" {
   vpc_id       = "${var.vpc_id}"
-  port         = "4000"
+  port         = "${var.container_port}"
   protocol     = "HTTP"
   target_type  = "ip"
   health_check = {
-    port = "4000"
+    port = "${var.container_port}"
     path = "/"
     interval = 60
   }
 
   # NOTE: TF is unable to destroy a target group while a listener is attached,
-  # therefor we have to create a new one before destroying the old. This also means
+  # therefore we have to create a new one before destroying the old. This also means
   # we have to let it have a random name, and then tag it with the desired name.
   lifecycle {
     create_before_destroy = true
   }
   tags = {
     User        = "Terraform"
-    Name        = "${var.environment}-ror-target-4000-green"
-    "User:Service" = "MainRorApp"
+    Name        = "${var.environment}-${var.name}-target-${var.container_port}-green"
+    "User:Service" = "${var.name}"
     Environment = "${var.environment}"
   }
 }
@@ -198,12 +224,12 @@ resource "aws_security_group_rule" "lb_to_containers" {
   type                     = "ingress"
   protocol                 = "tcp"
   from_port                = "80"
-  to_port                  = "4000"
+  to_port                  = "${var.container_port}"
   source_security_group_id = "${module.raise_ror_frontend_sg_80.this_security_group_id}"
 }
 
 resource "aws_alb_listener" "front_end_80" {
-  load_balancer_arn = "${module.alb.load_balancer_id}"
+  load_balancer_arn = "${element(concat(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id), 0)}"
   port = "80"
   protocol = "HTTP"
 
@@ -214,7 +240,7 @@ resource "aws_alb_listener" "front_end_80" {
 }
 
 resource "aws_alb_listener" "front_end_8443" {
-  load_balancer_arn = "${module.alb.load_balancer_id}"
+  load_balancer_arn = "${element(concat(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id), 0)}"
   port              = "8443"
   protocol          = "HTTP"
 
@@ -238,9 +264,9 @@ module "ecr" {
 module "codedeploy-for-ecs" {
   source                     = "tmknom/codedeploy-for-ecs/aws"
   version                    = "1.2.0"
-  name                       = "${var.environment}-sinatra"
-  ecs_cluster_name           = "${aws_ecs_cluster.sinatra.name}"
-  ecs_service_name           = "${var.environment}-sinatra"
+  name                       = "${var.environment}-${var.name}"
+  ecs_cluster_name           = "${aws_ecs_cluster.application.name}"
+  ecs_service_name           = "${var.environment}-${var.name}"
   lb_listener_arns           = ["${aws_alb_listener.front_end_80.arn}"]
   blue_lb_target_group_name  = "${module.ecs-fargate.target_group_name}"
   green_lb_target_group_name = "${aws_lb_target_group.green.name}"
@@ -258,7 +284,7 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "iam_codepipeline_role" {
-  name = "iam_codepipeline"
+  name = "${var.name}-codepipeline"
   permissions_boundary = ""
   assume_role_policy = <<EOF
 {
@@ -285,7 +311,7 @@ EOF
 
 }
 resource "aws_iam_role_policy" "codedeploypolicy" {
-  name = "codedeploypolicy"
+  name = "${var.name}-codedeploypolicy"
   role = "${module.codedeploy-for-ecs.iam_role_name}"
 
   policy = <<EOF
@@ -326,7 +352,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "iam_codepipeline_policy" {
-  name = "iam_codepipeline_policy"
+  name = "${var.name}-iam_codepipeline_policy"
   role = "${aws_iam_role.iam_codepipeline_role.id}"
 
   policy = <<EOF
@@ -355,7 +381,7 @@ EOF
 }
 
 resource "aws_iam_role" "iam_ecs_service_role" {
-  name = "ecsServiceRole"
+  name = "${var.name}-ecsServiceRole"
   path = "/"
   permissions_boundary = ""
   assume_role_policy = <<EOF
@@ -376,7 +402,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "ecsServiceRolePolicy" {
-  name = "ecsServiceRolePolicy"
+  name = "${var.name}-ecsServiceRolePolicy"
   role = "${aws_iam_role.iam_ecs_service_role.id}"
 
   policy = <<POLICY
@@ -402,7 +428,7 @@ POLICY
 }
 
 resource "aws_iam_role" "iam_code_build_role" {
-  name = "iam_code_build_role"
+  name = "${var.name}-iam_code_build_role"
   permissions_boundary = ""
   assume_role_policy = <<EOF
 {
@@ -429,7 +455,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "iam_code_build_policy" {
-  name = "iam_code_build_policy"
+  name = "${var.name}-iam_code_build_policy"
   role = "${aws_iam_role.iam_code_build_role.id}"
 
   policy = <<POLICY
@@ -508,18 +534,18 @@ resource "aws_iam_role_policy" "iam_code_build_policy" {
 POLICY
 }
 resource "aws_s3_bucket" "default" {
-  bucket = "todds-test-bucket-for-this"
+  bucket = "${var.name}-codepipeline"
   acl    = "private"
   force_destroy = "true"
 
   tags {
-    Name        = "Demo"
-    Environment = "Demo"
+    Name        = "${var.name}-codepipeline"
+    Environment = "${var.environment}"
   }
 }
 
 resource "aws_codebuild_project" "codebuild_docker_image" {
-  name         = "codebuild_docker_image"
+  name         = "${var.name}-codebuild_docker_image"
   description  = "build docker images"
   build_timeout      = "300"
   service_role = "${aws_iam_role.iam_code_build_role.arn}"
@@ -558,8 +584,8 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
 }
 
 resource "aws_codebuild_project" "codebuild_task_definition" {
-  name         = "codebuild_task_definition"
-  description  = "build docker images"
+  name         = "${var.name}-codebuild_task_definition"
+  description  = "generate task definition and appspec"
   build_timeout      = "300"
   service_role = "${aws_iam_role.iam_code_build_role.arn}"
 
@@ -641,8 +667,8 @@ phases:
               "portMappings": [
                 {
                   "protocol": "tcp",
-                  "containerPort": 4000,
-                  "hostPort": 4000
+                  "containerPort": ${var.container_port},
+                  "hostPort": ${var.container_port}
                 }
               ],
               "essential": true
@@ -691,7 +717,7 @@ BUILDSPEC
 }
 
 resource "aws_codepipeline" "codepipeline" {
-  name     = "deployable-sinatra"
+  name     = "${var.name}"
   role_arn = "${aws_iam_role.iam_codepipeline_role.arn}"
 
   artifact_store {
@@ -715,7 +741,7 @@ resource "aws_codepipeline" "codepipeline" {
         OAuthToken           = "${var.github_token}"
         Owner                = "${var.repo_owner}"
         Repo                 = "${var.repo_name}"
-        Branch               = "${var.branch}"
+        Branch               = "${var.git_branch}"
       }
     }
   }
@@ -783,7 +809,33 @@ resource "godaddy_domain_record" "sinatra" {
   record {
     name = "deployable-sinatra"
     type = "CNAME"
-    data = "${module.alb.dns_name}"
+    data = "${element(concat(module.alb-public.dns_name, module.alb-internal.dns_name), 0)}"
+    ttl = 600
+  }
+}
+
+resource "godaddy_domain_record" "sinatra" {
+  domain   = "${var.dns_zone_name}"
+  count = "${replace(replace(var.subdomain, "/^$/", "1"),
+             "/.{1,}/", "0")}"
+
+  record {
+    name = "${var.name}"
+    type = "CNAME"
+    data = "${element(concat(module.alb-public.dns_name, module.alb-internal.dns_name), 0)}"
+    ttl = 600
+  }
+}
+
+resource "godaddy_domain_record" "sinatra" {
+  domain   = "${var.dns_zone_name}"
+  count = "${replace(replace(var.subdomain, "/^$/", "0"),
+             "/.{1,}/", "1")}"
+
+  record {
+    name = "${var.subdomain}"
+    type = "CNAME"
+    data = "${element(concat(module.alb-public.dns_name, module.alb-internal.dns_name), 0)}"
     ttl = 600
   }
 }

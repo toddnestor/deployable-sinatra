@@ -8,13 +8,31 @@ variable "key_name" {
 variable "github_token" {}
 variable "registry_name" {}
 variable "namespace" {}
+variable "container_version" {}
+variable "dns_zone_name" {}
+
+
+
 variable "environment" {}
 variable "vpc_id" {}
 variable "public_subnet_ids" {
   type = "list"
 }
-variable "container_version" {}
-variable "repo_owner" {}
+variable "private_subnet_ids" {
+  type = "list"
+}
+variable "repo_owner" {
+  default = "toddnestor"
+}
 variable "repo_name" {}
-variable "branch" {}
-variable "dns_zone_name" {}
+variable "git_branch" {}
+variable "name" {}
+variable "internal" {
+  default = true
+}
+variable "subdomain" {
+  default = ""
+}
+variable "container_port" {
+  default = "4000"
+}
