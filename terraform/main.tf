@@ -7,9 +7,12 @@ module "development-sinatra" {
 
   name = "deployable-sinatra"
   environment = "development"
-  repo_name = "deployable-sinatra"
   git_branch = "develop"
   internal = false
+
+  environment_variables = {
+    RACK_ENV = "development"
+  }
 }
 
 module "staging-sinatra" {
@@ -21,8 +24,13 @@ module "staging-sinatra" {
 
   name = "deployable-sinatra"
   environment = "staging"
-  repo_name = "deployable-sinatra"
   git_branch = "staging"
   subdomain = "test-two"
   internal = false
+
+  environment_variables = {
+    RACK_ENV = "staging"
+    LetsTest = "If you see this it works"
+    SomethingElse = "And if you see this it really works!"
+  }
 }

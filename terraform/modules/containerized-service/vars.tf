@@ -24,7 +24,9 @@ variable "private_subnet_ids" {
 variable "repo_owner" {
   default = "toddnestor"
 }
-variable "repo_name" {}
+variable "repo_name" {
+  default = ""
+}
 variable "git_branch" {}
 variable "name" {}
 variable "internal" {
@@ -41,4 +43,9 @@ variable "memory" {
 }
 variable "cpu" {
   default = "256"
+}
+
+variable "environment_variables" {
+  type = "map"
+  default = {}
 }

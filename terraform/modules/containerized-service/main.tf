@@ -173,9 +173,7 @@ module "ecs-fargate" {
   task_container_assign_public_ip = true
 
   task_container_environment_count = 10
-  task_container_environment       = {
-    RACK_ENV = "${var.environment}"
-  }
+  task_container_environment       = "${var.environment_variables}"
 
   deployment_controller_type = "CODE_DEPLOY"
 
@@ -573,7 +571,7 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
     }
     environment_variable {
       name = "IMAGE_TAG"
-      value = "${var.repo_name}"
+      value = "${var.name}"
     }
   }
 
@@ -612,7 +610,7 @@ resource "aws_codebuild_project" "codebuild_task_definition" {
     }
     environment_variable {
       name = "IMAGE_TAG"
-      value = "${var.repo_name}"
+      value = "${var.name}"
     }
     environment_variable {
       name = "EXECUTION_ROLE"
@@ -740,7 +738,7 @@ resource "aws_codepipeline" "codepipeline" {
       configuration {
         OAuthToken           = "${var.github_token}"
         Owner                = "${var.repo_owner}"
-        Repo                 = "${var.repo_name}"
+        Repo                 = "${coalesce(var.repo_name, var.name)}"
         Branch               = "${var.git_branch}"
       }
     }
