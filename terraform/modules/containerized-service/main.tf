@@ -581,6 +581,36 @@ resource "aws_codebuild_project" "codebuild_docker_image" {
   }
 }
 
+data "template_file" "generate_app_spec" {
+  template = "${file("${path.module}/generate_app_spec.sh.tpl")}"
+  vars = {
+    environment = "${var.environment}"
+    name = "${var.name}"
+    container_port = "${var.container_port}"
+  }
+}
+
+data "template_file" "generate_task_definition" {
+  template = "${file("${path.module}/generate_task_definition.sh.tpl")}"
+  vars = {
+    environment = "${var.environment}"
+    name = "${var.name}"
+    container_port = "${var.container_port}"
+    cpu = "${var.cpu}"
+    memory = "${var.memory}"
+  }
+}
+
+data "template_file" "buildspec" {
+  template = "${file("${path.module}/buildspec.yml.tpl")}"
+  vars = {
+    environment = "${var.environment}"
+    name = "${var.name}"
+    generate_task_definition = "${data.template_file.generate_task_definition.rendered}"
+    generate_app_spec = "${data.template_file.generate_app_spec.rendered}"
+  }
+}
+
 resource "aws_codebuild_project" "codebuild_task_definition" {
   name         = "${var.environment}-${var.name}-codebuild_task_definition"
   description  = "generate task definition and appspec"
@@ -796,18 +826,5 @@ resource "aws_codepipeline" "codepipeline" {
         DeploymentGroupName = "${var.environment}-${var.name}"
       }
     }
-  }
-}
-
-# GODADDY DNS #
-
-resource "godaddy_domain_record" "subdomain" {
-  domain   = "${var.dns_zone_name}"
-
-  record {
-    name = "${coalesce(var.subdomain, var.name)}"
-    type = "CNAME"
-    data = "${coalesce(module.alb-public.dns_name, module.alb-internal.dns_name)}"
-    ttl = 600
   }
 }
