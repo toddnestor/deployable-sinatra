@@ -4,20 +4,19 @@ provider "aws" {
   region     = "us-east-2"
 }
 
-provider "godaddy" {
-}
+provider "godaddy" {}
 
 module "development-sinatra" {
   source = "./modules/containerized-service"
 
   aws_access_key = "${var.aws_access_key}"
   aws_secret_key = "${var.aws_secret_key}"
-  github_token = "${var.github_token}"
+  github_token   = "${var.github_token}"
 
-  name = "deployable-sinatra"
+  name        = "deployable-sinatra"
   environment = "development"
-  git_branch = "develop"
-  internal = false
+  git_branch  = "develop"
+  internal    = false
 
   environment_variables = {
     RACK_ENV = "development"
@@ -29,17 +28,17 @@ module "staging-sinatra" {
 
   aws_access_key = "${var.aws_access_key}"
   aws_secret_key = "${var.aws_secret_key}"
-  github_token = "${var.github_token}"
+  github_token   = "${var.github_token}"
 
-  name = "deployable-sinatra"
+  name        = "deployable-sinatra"
   environment = "staging"
-  git_branch = "staging"
-  subdomain = "test-two"
-  internal = false
+  git_branch  = "staging"
+  subdomain   = "test-two"
+  internal    = false
 
   environment_variables = {
-    RACK_ENV = "staging"
-    LetsTest = "If you see this it works"
+    RACK_ENV      = "staging"
+    LetsTest      = "If you see this it works"
     SomethingElse = "And if you see this it really works!"
   }
 }
@@ -51,6 +50,14 @@ resource "aws_db_subnet_group" "default" {
   tags = {
     Name = "My DB subnet group"
   }
+}
+
+resource "aws_rds_cluster_instance" "postgresql_instances" {
+  count              = 2
+  identifier         = "${var.environment}-minerva-${count.index}"
+  cluster_identifier = "${aws_rds_cluster.postgresql.id}"
+  instance_class     = "db.r4.large"
+  engine             = "aurora-postgresql"
 }
 
 resource "aws_rds_cluster" "postgresql" {
@@ -71,46 +78,46 @@ module "minerva" {
 
   aws_access_key = "${var.aws_access_key}"
   aws_secret_key = "${var.aws_secret_key}"
-  github_token = "${var.github_token}"
+  github_token   = "${var.github_token}"
 
-  name = "minerva"
+  name        = "minerva"
   environment = "${var.environment}"
-  git_branch = "develop"
-  internal = false
-  repo_owner = "RaiseMe"
+  git_branch  = "develop"
+  internal    = false
+  repo_owner  = "RaiseMe"
 
   environment_variables = {
-    RACK_ENV = "${var.environment}"
-    DB_USER = "${aws_rds_cluster.postgresql.master_username}"
+    RACK_ENV    = "${var.environment}"
+    DB_USER     = "${aws_rds_cluster.postgresql.master_username}"
     DB_PASSWORD = "${aws_rds_cluster.postgresql.master_password}"
-    DB_NAME = "${aws_rds_cluster.postgresql.database_name}"
-    DB_HOST = "${aws_rds_cluster.postgresql.endpoint}"
+    DB_NAME     = "${aws_rds_cluster.postgresql.database_name}"
+    DB_HOST     = "${aws_rds_cluster.postgresql.endpoint}"
   }
 }
 
 # GODADDY DNS #
 
 resource "godaddy_domain_record" "subdomain" {
-  domain   = "${var.dns_zone_name}"
+  domain = "${var.dns_zone_name}"
 
   record {
     name = "${coalesce(module.development-sinatra.subdomain, module.development-sinatra.name)}"
     type = "CNAME"
     data = "${module.development-sinatra.alb_dns}"
-    ttl = 600
+    ttl  = 600
   }
 
   record {
     name = "${coalesce(module.staging-sinatra.subdomain, module.staging-sinatra.name)}"
     type = "CNAME"
     data = "${module.staging-sinatra.alb_dns}"
-    ttl = 600
+    ttl  = 600
   }
 
   record {
     name = "${module.minerva.name}"
     type = "CNAME"
     data = "${module.minerva.alb_dns}"
-    ttl = 600
+    ttl  = 600
   }
 }

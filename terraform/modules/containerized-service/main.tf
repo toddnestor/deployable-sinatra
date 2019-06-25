@@ -8,8 +8,7 @@ provider "aws" {
   region     = "us-east-2"
 }
 
-provider "godaddy" {
-}
+provider "godaddy" {}
 
 ##################################################################################
 # RESOURCES
@@ -28,17 +27,17 @@ data "aws_iam_policy_document" "albs3" {
       identifiers = ["${data.aws_elb_service_account.default.arn}"]
     }
 
-    effect = "Allow"
-    actions = ["s3:PutObject"]
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
     resources = ["arn:aws:s3:::${var.environment}-${var.name}-alb-logs/AWSLogs/*"]
   }
 }
 
 resource "aws_s3_bucket" "logs_bucket" {
-  bucket = "${var.environment}-${var.name}-alb-logs"
-  policy = "${data.aws_iam_policy_document.albs3.json}"
+  bucket        = "${var.environment}-${var.name}-alb-logs"
+  policy        = "${data.aws_iam_policy_document.albs3.json}"
   force_destroy = "true"
-  acl    = "log-delivery-write"
+  acl           = "log-delivery-write"
 
   lifecycle_rule = {
     id      = "log-expiration"
@@ -53,7 +52,7 @@ resource "aws_s3_bucket" "logs_bucket" {
 # ALB
 
 module "raise_ror_frontend_sg_80" {
-  source = "terraform-aws-modules/security-group/aws//modules/http-80"
+  source  = "terraform-aws-modules/security-group/aws//modules/http-80"
   version = "2.17.0"
 
   name        = "PublicWebServer80-${var.environment}-${var.name}"
@@ -71,7 +70,7 @@ module "raise_ror_frontend_sg_80" {
 }
 
 module "raise_ror_frontend_sg_8443" {
-  source = "terraform-aws-modules/security-group/aws//modules/https-8443"
+  source  = "terraform-aws-modules/security-group/aws//modules/https-8443"
   version = "2.17.0"
 
   name        = "PublicWebServer8443-${var.environment}-${var.name}"
@@ -89,8 +88,8 @@ module "raise_ror_frontend_sg_8443" {
 }
 
 module "alb-public" {
-  source  = "terraform-aws-modules/alb/aws"
-  version = "3.6.0"
+  source     = "terraform-aws-modules/alb/aws"
+  version    = "3.6.0"
   create_alb = "${1 - var.internal}"
 
   load_balancer_name = "${var.environment}-${var.name}"
@@ -107,14 +106,14 @@ module "alb-public" {
     User           = "Terraform"
     Name           = "ALB-${var.name}"
     "User:Service" = "${var.name}"
-    "User:Type" = "WebServer"
+    "User:Type"    = "WebServer"
     Environment    = "${var.environment}"
   }
 }
 
 module "alb-internal" {
-  source  = "terraform-aws-modules/alb/aws"
-  version = "3.6.0"
+  source     = "terraform-aws-modules/alb/aws"
+  version    = "3.6.0"
   create_alb = "${var.internal}"
 
   load_balancer_name = "${var.environment}-${var.name}"
@@ -131,7 +130,7 @@ module "alb-internal" {
     User           = "Terraform"
     Name           = "ALB-${var.name}"
     "User:Service" = "${var.name}"
-    "User:Type" = "WebServer"
+    "User:Type"    = "WebServer"
     Environment    = "${var.environment}"
   }
 }
@@ -140,27 +139,21 @@ module "alb-internal" {
 
 resource "aws_ecs_cluster" "application" {
   name = "ECS${var.environment}-${var.name}"
+
   tags = {
-    User        = "Terraform"
-    Name        = "ECS${var.environment}-${var.name}"
+    User           = "Terraform"
+    Name           = "ECS${var.environment}-${var.name}"
     "User:Service" = "${var.name}"
-    Environment = "${var.environment}"
+    Environment    = "${var.environment}"
   }
 }
 
 # FARGATE
 
 module "ecs-fargate" {
-  # The registry module does not currently output the name of the auto-generated
-  # LB Target Group.  It also does not support modifying the deployment controller
-  # type.  As such, the project was forked, with modifications made.
-  # A pull request has been opened with the maintainer to implement the same
-  # functionality.  When https://github.com/telia-oss/terraform-aws-ecs-fargate/pull/13
-  # and https://github.com/telia-oss/terraform-aws-ecs-fargate/pull/14
-  # is merged, the below commented out source should be reinstated, with the
-  # new version applied which includes the new output functionality.
+  # The registry module does not currently output the name of the auto-generated  # LB Target Group.  It also does not support modifying the deployment controller  # type.  As such, the project was forked, with modifications made.  # A pull request has been opened with the maintainer to implement the same  # functionality.  When https://github.com/telia-oss/terraform-aws-ecs-fargate/pull/13  # and https://github.com/telia-oss/terraform-aws-ecs-fargate/pull/14  # is merged, the below commented out source should be reinstated, with the  # new version applied which includes the new output functionality.
 
-  source  = "git::https://github.com/RaiseMe/terraform-aws-ecs-fargate.git?ref=tags/v0.1.2.5"
+  source = "git::https://github.com/RaiseMe/terraform-aws-ecs-fargate.git?ref=tags/v0.1.2.5"
 
   cluster_id         = "${aws_ecs_cluster.application.arn}"
   lb_arn             = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
@@ -168,8 +161,8 @@ module "ecs-fargate" {
   private_subnet_ids = ["${var.private_subnet_ids}"]
   vpc_id             = "${var.vpc_id}"
 
-  task_container_image = "${module.ecr.registry_url}:${var.container_version}"
-  task_container_port  = "${var.container_port}"
+  task_container_image            = "${module.ecr.registry_url}:${var.container_version}"
+  task_container_port             = "${var.container_port}"
   task_container_assign_public_ip = true
 
   task_container_environment_count = 10
@@ -177,29 +170,31 @@ module "ecs-fargate" {
 
   deployment_controller_type = "CODE_DEPLOY"
 
-  desired_count        = "2"
-  health_check         = {
-    port = "${var.container_port}"
-    path = "/healthcheck"
+  desired_count = "2"
+
+  health_check = {
+    port     = "${var.container_port}"
+    path     = "/healthcheck"
     interval = 60
   }
 
   tags = {
-    User        = "Terraform"
-    Name        = "Fargate${var.environment}-${var.name}"
+    User           = "Terraform"
+    Name           = "Fargate${var.environment}-${var.name}"
     "User:Service" = "${var.name}"
-    Environment = "${var.environment}"
+    Environment    = "${var.environment}"
   }
 }
 
 resource "aws_lb_target_group" "green" {
-  vpc_id       = "${var.vpc_id}"
-  port         = "${var.container_port}"
-  protocol     = "HTTP"
-  target_type  = "ip"
+  vpc_id      = "${var.vpc_id}"
+  port        = "${var.container_port}"
+  protocol    = "HTTP"
+  target_type = "ip"
+
   health_check = {
-    port = "${var.container_port}"
-    path = "/"
+    port     = "${var.container_port}"
+    path     = "/"
     interval = 60
   }
 
@@ -209,11 +204,12 @@ resource "aws_lb_target_group" "green" {
   lifecycle {
     create_before_destroy = true
   }
+
   tags = {
-    User        = "Terraform"
-    Name        = "${var.environment}-${var.name}-target-${var.container_port}-green"
+    User           = "Terraform"
+    Name           = "${var.environment}-${var.name}-target-${var.container_port}-green"
     "User:Service" = "${var.name}"
-    Environment = "${var.environment}"
+    Environment    = "${var.environment}"
   }
 }
 
@@ -228,11 +224,11 @@ resource "aws_security_group_rule" "lb_to_containers" {
 
 resource "aws_alb_listener" "front_end_80" {
   load_balancer_arn = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
-  port = "80"
-  protocol = "HTTP"
+  port              = "80"
+  protocol          = "HTTP"
 
   default_action = {
-    type = "forward"
+    type             = "forward"
     target_group_arn = "${module.ecs-fargate.target_group_arn}"
   }
 }
@@ -243,7 +239,7 @@ resource "aws_alb_listener" "front_end_8443" {
   protocol          = "HTTP"
 
   default_action = {
-    type = "forward"
+    type             = "forward"
     target_group_arn = "${module.ecs-fargate.target_group_arn}"
   }
 }
@@ -251,10 +247,10 @@ resource "aws_alb_listener" "front_end_8443" {
 # ECR
 
 module "ecr" {
-  source              = "git::https://github.com/cloudposse/terraform-aws-ecr.git?ref=master"
-  name                = "${var.name}"
-  namespace           = "RaiseMe"
-  stage               = "${var.environment}"
+  source    = "git::https://github.com/cloudposse/terraform-aws-ecr.git?ref=master"
+  name      = "${var.name}"
+  namespace = "RaiseMe"
+  stage     = "${var.environment}"
 }
 
 # CODEPIPELINE
@@ -282,8 +278,9 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "iam_codepipeline_role" {
-  name = "${var.environment}-${var.name}-codepipeline"
+  name                 = "${var.environment}-${var.name}-codepipeline"
   permissions_boundary = ""
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -306,8 +303,8 @@ resource "aws_iam_role" "iam_codepipeline_role" {
   ]
 }
 EOF
-
 }
+
 resource "aws_iam_role_policy" "codedeploypolicy" {
   name = "${var.environment}-${var.name}-codedeploypolicy"
   role = "${module.codedeploy-for-ecs.iam_role_name}"
@@ -379,9 +376,10 @@ EOF
 }
 
 resource "aws_iam_role" "iam_ecs_service_role" {
-  name = "${var.environment}-${var.name}-ecsServiceRole"
-  path = "/"
+  name                 = "${var.environment}-${var.name}-ecsServiceRole"
+  path                 = "/"
   permissions_boundary = ""
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -426,8 +424,9 @@ POLICY
 }
 
 resource "aws_iam_role" "iam_code_build_role" {
-  name = "${var.environment}-${var.name}-iam_code_build_role"
+  name                 = "${var.environment}-${var.name}-iam_code_build_role"
   permissions_boundary = ""
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -531,9 +530,10 @@ resource "aws_iam_role_policy" "iam_code_build_policy" {
 }
 POLICY
 }
+
 resource "aws_s3_bucket" "default" {
-  bucket = "${var.environment}-${var.name}-codepipeline"
-  acl    = "private"
+  bucket        = "${var.environment}-${var.name}-codepipeline"
+  acl           = "private"
   force_destroy = "true"
 
   tags {
@@ -543,118 +543,132 @@ resource "aws_s3_bucket" "default" {
 }
 
 resource "aws_codebuild_project" "codebuild_docker_image" {
-  name         = "${var.environment}-${var.name}-codebuild_docker_image"
-  description  = "build docker images"
-  build_timeout      = "300"
-  service_role = "${aws_iam_role.iam_code_build_role.arn}"
+  name          = "${var.environment}-${var.name}-codebuild_docker_image"
+  description   = "build docker images"
+  build_timeout = "300"
+  service_role  = "${aws_iam_role.iam_code_build_role.arn}"
 
   artifacts {
     type = "CODEPIPELINE"
   }
+
   environment {
-    compute_type = "BUILD_GENERAL1_SMALL"
-    image        = "aws/codebuild/docker:17.09.0"
-    type         = "LINUX_CONTAINER"
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/docker:17.09.0"
+    type            = "LINUX_CONTAINER"
     privileged_mode = true
 
     environment_variable {
       "name"  = "AWS_REGION"
       "value" = "${data.aws_region.current.name}"
     }
+
     environment_variable {
       "name"  = "AWS_ACCOUNT_ID"
       "value" = "${data.aws_caller_identity.current.account_id}"
     }
+
     environment_variable {
       "name"  = "IMAGE_REPO_NAME"
       "value" = "${module.ecr.repository_name}"
     }
+
     environment_variable {
-      name = "IMAGE_TAG"
+      name  = "IMAGE_TAG"
       value = "${var.name}"
     }
   }
 
   source {
-    type            = "CODEPIPELINE"
-    buildspec       = "app/buildspec.yml"
+    type      = "CODEPIPELINE"
+    buildspec = "app/buildspec.yml"
   }
 }
 
 data "template_file" "generate_app_spec" {
   template = "${file("${path.module}/generate_app_spec.sh.tpl")}"
+
   vars = {
-    environment = "${var.environment}"
-    name = "${var.name}"
+    environment    = "${var.environment}"
+    name           = "${var.name}"
     container_port = "${var.container_port}"
   }
 }
 
 data "template_file" "generate_task_definition" {
   template = "${file("${path.module}/generate_task_definition.sh.tpl")}"
+
   vars = {
-    environment = "${var.environment}"
-    name = "${var.name}"
+    environment    = "${var.environment}"
+    name           = "${var.name}"
     container_port = "${var.container_port}"
-    cpu = "${var.cpu}"
-    memory = "${var.memory}"
+    cpu            = "${var.cpu}"
+    memory         = "${var.memory}"
   }
 }
 
 data "template_file" "buildspec" {
   template = "${file("${path.module}/buildspec.yml.tpl")}"
+
   vars = {
-    environment = "${var.environment}"
-    name = "${var.name}"
+    environment              = "${var.environment}"
+    name                     = "${var.name}"
     generate_task_definition = "${data.template_file.generate_task_definition.rendered}"
-    generate_app_spec = "${data.template_file.generate_app_spec.rendered}"
+    generate_app_spec        = "${data.template_file.generate_app_spec.rendered}"
   }
 }
 
 resource "aws_codebuild_project" "codebuild_task_definition" {
-  name         = "${var.environment}-${var.name}-codebuild_task_definition"
-  description  = "generate task definition and appspec"
-  build_timeout      = "300"
-  service_role = "${aws_iam_role.iam_code_build_role.arn}"
+  name          = "${var.environment}-${var.name}-codebuild_task_definition"
+  description   = "generate task definition and appspec"
+  build_timeout = "300"
+  service_role  = "${aws_iam_role.iam_code_build_role.arn}"
 
   artifacts {
     type = "CODEPIPELINE"
   }
+
   environment {
-    compute_type = "BUILD_GENERAL1_SMALL"
-    image        = "aws/codebuild/docker:17.09.0"
-    type         = "LINUX_CONTAINER"
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/docker:17.09.0"
+    type            = "LINUX_CONTAINER"
     privileged_mode = true
 
     environment_variable {
       "name"  = "AWS_REGION"
       "value" = "${data.aws_region.current.name}"
     }
+
     environment_variable {
       "name"  = "AWS_ACCOUNT_ID"
       "value" = "${data.aws_caller_identity.current.account_id}"
     }
+
     environment_variable {
       "name"  = "IMAGE_REPO_NAME"
       "value" = "${module.ecr.repository_name}"
     }
+
     environment_variable {
-      name = "IMAGE_TAG"
+      name  = "IMAGE_TAG"
       value = "${var.name}"
     }
+
     environment_variable {
-      name = "EXECUTION_ROLE"
+      name  = "EXECUTION_ROLE"
       value = "${module.ecs-fargate.execution_role_arn}"
     }
+
     environment_variable {
-      name = "TASK_ROLE"
+      name  = "TASK_ROLE"
       value = "${module.ecs-fargate.task_role_arn}"
     }
   }
 
   source {
-    type            = "CODEPIPELINE"
-    buildspec       = <<BUILDSPEC
+    type = "CODEPIPELINE"
+
+    buildspec = <<BUILDSPEC
 version: 0.2
 
 phases:
@@ -766,10 +780,10 @@ resource "aws_codepipeline" "codepipeline" {
       output_artifacts = ["code"]
 
       configuration {
-        OAuthToken           = "${var.github_token}"
-        Owner                = "${var.repo_owner}"
-        Repo                 = "${coalesce(var.repo_name, var.name)}"
-        Branch               = "${var.git_branch}"
+        OAuthToken = "${var.github_token}"
+        Owner      = "${var.repo_owner}"
+        Repo       = "${coalesce(var.repo_name, var.name)}"
+        Branch     = "${var.git_branch}"
       }
     }
   }
@@ -785,6 +799,7 @@ resource "aws_codepipeline" "codepipeline" {
       provider        = "CodeBuild"
       input_artifacts = ["code"]
       version         = "1"
+
       configuration {
         ProjectName = "${aws_codebuild_project.codebuild_docker_image.name}"
       }
@@ -796,13 +811,14 @@ resource "aws_codepipeline" "codepipeline" {
     name = "GenerateTaskDefinitionAndAppSpec"
 
     action {
-      name            = "Build"
-      category        = "Build"
-      owner           = "AWS"
-      provider        = "CodeBuild"
-      input_artifacts = ["code"]
+      name             = "Build"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      input_artifacts  = ["code"]
       output_artifacts = ["task"]
-      version         = "1"
+      version          = "1"
+
       configuration {
         ProjectName = "${aws_codebuild_project.codebuild_task_definition.name}"
       }
@@ -822,7 +838,7 @@ resource "aws_codepipeline" "codepipeline" {
       version         = "1"
 
       configuration {
-        ApplicationName = "${module.codedeploy-for-ecs.codedeploy_app_name}"
+        ApplicationName     = "${module.codedeploy-for-ecs.codedeploy_app_name}"
         DeploymentGroupName = "${var.environment}-${var.name}"
       }
     }
