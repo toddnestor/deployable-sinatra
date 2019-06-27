@@ -28,7 +28,8 @@ read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
           "hostPort": ${container_port}
         }
       ],
-      "essential": true
+      "essential": true,
+      "environment": ${environment_variables}
     }
   ]
 }

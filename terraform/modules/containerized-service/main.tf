@@ -153,7 +153,8 @@ resource "aws_ecs_cluster" "application" {
 module "ecs-fargate" {
   # The registry module does not currently output the name of the auto-generated  # LB Target Group.  It also does not support modifying the deployment controller  # type.  As such, the project was forked, with modifications made.  # A pull request has been opened with the maintainer to implement the same  # functionality.  When https://github.com/telia-oss/terraform-aws-ecs-fargate/pull/13  # and https://github.com/telia-oss/terraform-aws-ecs-fargate/pull/14  # is merged, the below commented out source should be reinstated, with the  # new version applied which includes the new output functionality.
 
-  source = "git::https://github.com/RaiseMe/terraform-aws-ecs-fargate.git?ref=tags/v0.1.2.5"
+//  source = "git::https://github.com/RaiseMe/terraform-aws-ecs-fargate.git?ref=tags/v0.1.2.6"
+  source = "../../../../terraform-aws-ecs-fargate"
 
   cluster_id         = "${aws_ecs_cluster.application.arn}"
   lb_arn             = "${coalesce(module.alb-public.load_balancer_id, module.alb-internal.load_balancer_id)}"
@@ -595,15 +596,27 @@ data "template_file" "generate_app_spec" {
   }
 }
 
+# used to make a list of maps with name/value for each environment variable specified so they can be added
+# to the task definition
+resource "null_resource" "environment_variables" {
+  count = "${length(keys(var.environment_variables))}"
+
+  triggers {
+    name  = "${element(keys(var.environment_variables), count.index)}"
+    value = "${element(values(var.environment_variables), count.index)}"
+  }
+}
+
 data "template_file" "generate_task_definition" {
   template = "${file("${path.module}/generate_task_definition.sh.tpl")}"
 
   vars = {
-    environment    = "${var.environment}"
-    name           = "${var.name}"
-    container_port = "${var.container_port}"
-    cpu            = "${var.cpu}"
-    memory         = "${var.memory}"
+    environment           = "${var.environment}"
+    name                  = "${var.name}"
+    container_port        = "${var.container_port}"
+    cpu                   = "${var.cpu}"
+    memory                = "${var.memory}"
+    environment_variables = "${jsonencode(null_resource.environment_variables.*.triggers)}"
   }
 }
 
@@ -613,8 +626,8 @@ data "template_file" "buildspec" {
   vars = {
     environment              = "${var.environment}"
     name                     = "${var.name}"
-    generate_task_definition = "${data.template_file.generate_task_definition.rendered}"
-    generate_app_spec        = "${data.template_file.generate_app_spec.rendered}"
+    generate_task_definition = "${indent(8, data.template_file.generate_task_definition.rendered)}"
+    generate_app_spec        = "${indent(8, data.template_file.generate_app_spec.rendered)}"
   }
 }
 
@@ -666,95 +679,8 @@ resource "aws_codebuild_project" "codebuild_task_definition" {
   }
 
   source {
-    type = "CODEPIPELINE"
-
-    buildspec = <<BUILDSPEC
-version: 0.2
-
-phases:
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR...
-      - $(aws ecr get-login --no-include-email --region $AWS_REGION)
-  build:
-    commands:
-      - echo Build started on `date`
-      - export COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - echo Generate task definition json file
-      - |
-        cat << 'FILETEXT' >> generate_task_definition.sh
-        #!/bin/bash
-
-        read -r -d '' TASK_DEFINITION <<TASK_DEFINITION_TEXT
-        {
-          "family": "${var.environment}-${var.name}",
-          "executionRoleArn": "$EXECUTION_ROLE",
-          "taskRoleArn": "$TASK_ROLE",
-          "networkMode": "awsvpc",
-          "requiresCompatibilities": ["FARGATE"],
-          "cpu": "${var.cpu}",
-          "memory": "${var.memory}",
-          "containerDefinitions": [
-            {
-              "logConfiguration": {
-                "logDriver": "awslogs",
-                "options": {
-                  "awslogs-group": "${var.environment}-${var.name}",
-                  "awslogs-region": "$AWS_REGION",
-                  "awslogs-stream-prefix": "container"
-                }
-              },
-              "name": "${var.environment}-${var.name}",
-              "image": "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG-$COMMIT_HASH",
-              "portMappings": [
-                {
-                  "protocol": "tcp",
-                  "containerPort": ${var.container_port},
-                  "hostPort": ${var.container_port}
-                }
-              ],
-              "essential": true
-            }
-          ]
-        }
-        TASK_DEFINITION_TEXT
-
-        printf "$${TASK_DEFINITION}\n" > task_definition.json
-        FILETEXT
-      - cat generate_task_definition.sh
-      - chmod +x ./generate_task_definition.sh
-      - ./generate_task_definition.sh
-      - cat task_definition.json
-      - echo Register task definition and set new task definition to TASK_DEFINITION variable
-      - export TASK_DEFINITION=`aws ecs register-task-definition --cli-input-json "file://task_definition.json" | grep taskDefinitionArn | awk '{ print $2 }' | tr -d ',' | tr -d '"'`
-      - echo Generate appspec.yaml
-      - |
-        cat << 'FILETEXT' >> generate_app_spec.sh
-        #!/bin/bash
-
-        read -r -d '' APP_SPEC <<APP_SPEC_TEXT
-        version: %s
-        Resources:
-          - TargetService:
-              Type: AWS::ECS::Service
-              Properties:
-                TaskDefinition: "%s"
-                LoadBalancerInfo:
-                  ContainerName: "${var.environment}-${var.name}"
-                  ContainerPort: "4000"
-                PlatformVersion: "LATEST"
-        APP_SPEC_TEXT
-
-        printf "$${APP_SPEC}\n" $IMAGE_TAG-$COMMIT_HASH $TASK_DEFINITION > appspec.yaml
-        FILETEXT
-      - cat generate_app_spec.sh
-      - chmod +x ./generate_app_spec.sh
-      - ./generate_app_spec.sh
-artifacts:
-  files:
-    - appspec.yaml
-
-BUILDSPEC
+    type      = "CODEPIPELINE"
+    buildspec = "${data.template_file.buildspec.rendered}"
   }
 }
 
