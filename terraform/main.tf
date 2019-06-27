@@ -21,6 +21,7 @@ module "development-sinatra" {
 
   environment_variables = {
     RACK_ENV = "development"
+    THIS_BE_REAL = "I GOTS THIS"
   }
 }
 //
