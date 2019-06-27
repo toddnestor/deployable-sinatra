@@ -6,7 +6,7 @@ require 'sinatra/base'
 module App
   class Service < Sinatra::Base
     get '/' do
-      '🎉🎉🎉 STAGING!!!'
+      '🎉🎉🎉 I REALLY AM DEVELOP!!!'
     end
 
     get '/healthcheck' do
